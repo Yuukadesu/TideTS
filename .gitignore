@@ -1,0 +1,22 @@
+# 构建产物
+bin/
+*.exe
+*.test
+*.out
+
+# 运行时数据（WAL、.seg）
+data/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# 本地环境
+.env
+.env.*
+
+# ANTLR（make antlr-download 自动下载）
+tools/antlr/*.jar
