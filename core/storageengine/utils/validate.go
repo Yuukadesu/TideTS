@@ -2,11 +2,11 @@ package utils
 
 import (
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 // ValidatePoint 校验单点写入参数。
-func ValidatePoint(key model.SeriesKey, p model.Point) error {
+func ValidatePoint(key tsmodel.SeriesKey, p tsmodel.Point) error {
 	if key.DevicePath == "" || key.Measurement == "" {
 		return commons.ErrStorageDeviceMeasurementRequired
 	}
@@ -17,7 +17,7 @@ func ValidatePoint(key model.SeriesKey, p model.Point) error {
 }
 
 // CheckSeriesValueType 同序列测点类型须一致。
-func CheckSeriesValueType(existing []model.Point, p model.Point) error {
+func CheckSeriesValueType(existing []tsmodel.Point, p tsmodel.Point) error {
 	if len(existing) == 0 {
 		return nil
 	}

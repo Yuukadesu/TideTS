@@ -3,9 +3,9 @@ package segment
 import (
 	"path/filepath"
 
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/utils"
 	"github.com/hanami/tidets/core/storageengine/utils/mmap"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 type mappedFile struct {
@@ -18,7 +18,7 @@ type mappedFile struct {
 type file struct {
 	path   string
 	index  fileIndex
-	mem    map[string][]model.Point
+	mem    map[string][]tsmodel.Point
 	mapped *mappedFile
 }
 
@@ -60,11 +60,11 @@ func openFileMmap(path string) (*file, error) {
 	return sf, nil
 }
 
-func (sf *file) exportSeries() map[string][]model.Point {
+func (sf *file) exportSeries() map[string][]tsmodel.Point {
 	if sf.mem != nil {
 		return sf.mem
 	}
-	out := make(map[string][]model.Point)
+	out := make(map[string][]tsmodel.Point)
 	for _, c := range sf.mapped.chunks {
 		pts, err := queryChunk(sf.mapped.data, c, c.minTs, c.maxTs)
 		if err != nil || len(pts) == 0 {
@@ -100,7 +100,7 @@ func (sf *file) forEachSeriesMaxTs(fn func(keyStr string, maxTs int64)) {
 	}
 }
 
-func (sf *file) maxTimestamp(key model.SeriesKey) (int64, bool) {
+func (sf *file) maxTimestamp(key tsmodel.SeriesKey) (int64, bool) {
 	keyStr := key.String()
 	if sf.mem != nil {
 		pts := sf.mem[keyStr]
@@ -123,12 +123,25 @@ func (sf *file) maxTimestamp(key model.SeriesKey) (int64, bool) {
 	return max, found
 }
 
-func (sf *file) query(key model.SeriesKey, start, end int64) []model.Point {
+func (sf *file) query(key tsmodel.SeriesKey, start, end int64) []tsmodel.Point {
 	if sf.mem != nil {
 		return utils.QueryPointsInRange(sf.mem[key.String()], start, end)
 	}
+	return sf.queryMmap(key, start, end, queryChunk)
+}
+
+func (sf *file) queryTimestamps(key tsmodel.SeriesKey, start, end int64) []tsmodel.Point {
+	if sf.mem != nil {
+		return utils.QueryPointsInRange(sf.mem[key.String()], start, end)
+	}
+	return sf.queryMmap(key, start, end, queryChunkTimestamps)
+}
+
+type chunkQueryFn func(data []byte, meta chunkMeta, start, end int64) ([]tsmodel.Point, error)
+
+func (sf *file) queryMmap(key tsmodel.SeriesKey, start, end int64, query chunkQueryFn) []tsmodel.Point {
 	keyStr := key.String()
-	var merged []model.Point
+	var merged []tsmodel.Point
 	for _, c := range sf.mapped.chunks {
 		if c.keyStr != keyStr {
 			continue
@@ -136,11 +149,35 @@ func (sf *file) query(key model.SeriesKey, start, end int64) []model.Point {
 		if end < c.minTs || start > c.maxTs {
 			continue
 		}
-		part, err := queryChunk(sf.mapped.data, c, start, end)
+		part, err := query(sf.mapped.data, c, start, end)
 		if err != nil || len(part) == 0 {
 			continue
 		}
 		merged = utils.MergeSorted(merged, part)
 	}
 	return merged
+}
+
+func (sf *file) deleteRange(key tsmodel.SeriesKey, start, end int64) {
+	if sf.mem == nil {
+		return
+	}
+	keyStr := key.String()
+	sf.mem[keyStr] = utils.DeleteRangeFromSorted(sf.mem[keyStr], start, end)
+}
+
+func (sf *file) seriesTypes() map[string]tsmodel.DataType {
+	out := make(map[string]tsmodel.DataType)
+	if sf.mem != nil {
+		for k, pts := range sf.mem {
+			if len(pts) > 0 {
+				out[k] = pts[0].Value.Type
+			}
+		}
+		return out
+	}
+	for _, c := range sf.mapped.chunks {
+		out[c.keyStr] = c.dt
+	}
+	return out
 }

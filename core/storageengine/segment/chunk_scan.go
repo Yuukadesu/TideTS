@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 const fileHeaderSize = 8 // magic + version
@@ -16,7 +16,7 @@ type chunkMeta struct {
 	n      uint32
 	minTs  int64
 	maxTs  int64
-	dt     model.DataType
+	dt     tsmodel.DataType
 	tsOff  int
 	valOff int
 }
@@ -87,7 +87,7 @@ func parseChunkMeta(data []byte, off int) (chunkMeta, int, error) {
 	if off+1 > len(data) {
 		return chunkMeta{}, off, commons.ErrSegmentCorrupt
 	}
-	dt := model.DataType(data[off])
+	dt := tsmodel.DataType(data[off])
 	off += 1
 
 	tsOff := off
@@ -104,7 +104,7 @@ func parseChunkMeta(data []byte, off int) (chunkMeta, int, error) {
 		return chunkMeta{}, off, commons.ErrSegmentCorrupt
 	}
 
-	key := model.SeriesKey{DevicePath: device, Measurement: measurement}
+	key := tsmodel.SeriesKey{DevicePath: device, Measurement: measurement}
 	return chunkMeta{
 		keyStr: key.String(),
 		n:      n,
@@ -130,24 +130,24 @@ func readStringAt(data []byte, off int) (string, int, error) {
 	return s, off, nil
 }
 
-func fixedValueSize(dt model.DataType) int {
+func fixedValueSize(dt tsmodel.DataType) int {
 	switch dt {
-	case model.DataTypeBoolean:
+	case tsmodel.DataTypeBoolean:
 		return 1
-	case model.DataTypeInt32, model.DataTypeFloat:
+	case tsmodel.DataTypeInt32, tsmodel.DataTypeFloat:
 		return 4
-	case model.DataTypeInt64, model.DataTypeDouble:
+	case tsmodel.DataTypeInt64, tsmodel.DataTypeDouble:
 		return 8
 	default:
 		return 0
 	}
 }
 
-func valueColumnByteSize(data []byte, off int, dt model.DataType, n uint32) (int, error) {
+func valueColumnByteSize(data []byte, off int, dt tsmodel.DataType, n uint32) (int, error) {
 	if w := fixedValueSize(dt); w > 0 {
 		return int(n) * w, nil
 	}
-	if dt != model.DataTypeText {
+	if dt != tsmodel.DataTypeText {
 		return 0, commons.ErrStorageUnsupportedDataType(uint8(dt))
 	}
 	start := off
@@ -164,7 +164,24 @@ func valueColumnByteSize(data []byte, off int, dt model.DataType, n uint32) (int
 	return off - start, nil
 }
 
-func queryChunk(data []byte, meta chunkMeta, start, end int64) ([]model.Point, error) {
+func queryChunkTimestamps(data []byte, meta chunkMeta, start, end int64) ([]tsmodel.Point, error) {
+	if meta.n == 0 || end < meta.minTs || start > meta.maxTs {
+		return nil, nil
+	}
+	ts := readTimestampColumn(data, meta.tsOff, meta.n)
+	lo, hi := rangeBounds(ts, start, end)
+	if lo > hi {
+		return nil, nil
+	}
+	count := int(hi - lo + 1)
+	out := make([]tsmodel.Point, count)
+	for i := 0; i < count; i++ {
+		out[i].Timestamp = ts[lo+uint32(i)]
+	}
+	return out, nil
+}
+
+func queryChunk(data []byte, meta chunkMeta, start, end int64) ([]tsmodel.Point, error) {
 	if meta.n == 0 || end < meta.minTs || start > meta.maxTs {
 		return nil, nil
 	}
@@ -178,9 +195,9 @@ func queryChunk(data []byte, meta chunkMeta, start, end int64) ([]model.Point, e
 	if err != nil {
 		return nil, err
 	}
-	out := make([]model.Point, count)
+	out := make([]tsmodel.Point, count)
 	for i := uint32(0); i < count; i++ {
-		out[i] = model.Point{Timestamp: ts[lo+i], Value: vals[i]}
+		out[i] = tsmodel.Point{Timestamp: ts[lo+i], Value: vals[i]}
 	}
 	return out, nil
 }
@@ -235,16 +252,16 @@ func searchLE(ts []int64, v int64) int {
 	return lo - 1
 }
 
-func readValuesColumnSlice(data []byte, off int, dt model.DataType, startIdx, count uint32) ([]model.Value, error) {
+func readValuesColumnSlice(data []byte, off int, dt tsmodel.DataType, startIdx, count uint32) ([]tsmodel.Value, error) {
 	if count == 0 {
 		return nil, nil
 	}
 	if w := fixedValueSize(dt); w > 0 {
 		off += int(startIdx) * w
 		r := bytes.NewReader(data[off:])
-		return model.ReadValuesColumn(r, dt, count)
+		return tsmodel.ReadValuesColumn(r, dt, count)
 	}
-	if dt != model.DataTypeText {
+	if dt != tsmodel.DataTypeText {
 		return nil, commons.ErrStorageUnsupportedDataType(uint8(dt))
 	}
 	for i := uint32(0); i < startIdx; i++ {
@@ -255,7 +272,7 @@ func readValuesColumnSlice(data []byte, off int, dt model.DataType, startIdx, co
 		off = next
 	}
 	r := bytes.NewReader(data[off:])
-	return model.ReadValuesColumn(r, dt, count)
+	return tsmodel.ReadValuesColumn(r, dt, count)
 }
 
 func buildFileIndexFromChunks(chunks []chunkMeta) fileIndex {

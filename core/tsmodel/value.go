@@ -1,11 +1,11 @@
-package model
+package tsmodel
 
 import (
 	"encoding/binary"
 	"io"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/utils/codec"
+	"github.com/hanami/tidets/core/tsmodel/codec"
 )
 
 // DataType 测点值类型（对齐 IoTDB TSDataType 子集）。

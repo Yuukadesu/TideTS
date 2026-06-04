@@ -1,9 +1,14 @@
 grammar TideSQL;
 
-// 最简 TideTS SQL：INSERT + SELECT（单测点、单设备路径）。
+// TideTS SQL：INSERT / SELECT / DELETE / CREATE / SHOW。
 // 示例：
-//   INSERT INTO root.sg1.d1(temperature) VALUES (100, 25.5);
+//   INSERT INTO root.sg1.d1(temperature) VALUES (100, 25.5), (101, 26.0);
 //   SELECT temperature FROM root.sg1.d1 WHERE time >= 100 AND time <= 200 LIMIT 10;
+//   SELECT COUNT(temperature) FROM root.sg1.d1 WHERE time >= 100 AND time <= 200;
+//   DELETE FROM root.sg1.d1(temperature) WHERE time >= 100 AND time <= 200;
+//   CREATE TIMESERIES root.sg1.d1(temperature) WITH DATATYPE=DOUBLE;
+//   SHOW DEVICES root.sg1.**;
+//   SHOW TIMESERIES root.sg1.d1;
 
 options {
 }
@@ -11,14 +16,43 @@ options {
 statement
     : insertStmt
     | selectStmt
+    | deleteStmt
+    | createTimeseriesStmt
+    | showDevicesStmt
+    | showTimeseriesStmt
     ;
 
 insertStmt
-    : INSERT INTO path LPAREN measurement RPAREN VALUES LPAREN timestamp COMMA value RPAREN
+    : INSERT INTO path LPAREN measurement RPAREN VALUES valueRow (COMMA valueRow)*
+    ;
+
+valueRow
+    : LPAREN timestamp COMMA value RPAREN
     ;
 
 selectStmt
     : SELECT measurement FROM path whereClause? limitClause?
+    | SELECT COUNT LPAREN measurement RPAREN FROM path whereClause?
+    ;
+
+deleteStmt
+    : DELETE FROM path LPAREN measurement RPAREN whereClause
+    ;
+
+createTimeseriesStmt
+    : CREATE TIMESERIES path LPAREN measurement RPAREN WITH DATATYPE EQ dataTypeName
+    ;
+
+showDevicesStmt
+    : SHOW DEVICES showPattern?
+    ;
+
+showTimeseriesStmt
+    : SHOW TIMESERIES path
+    ;
+
+showPattern
+    : path (DOT STAR STAR)?
     ;
 
 whereClause
@@ -49,6 +83,10 @@ measurement
     : IDENTIFIER
     ;
 
+dataTypeName
+    : IDENTIFIER
+    ;
+
 timestamp
     : INTEGER
     ;
@@ -60,15 +98,23 @@ value
     | STRING
     ;
 
-INSERT   : I N S E R T ;
-INTO     : I N T O ;
-SELECT   : S E L E C T ;
-FROM     : F R O M ;
-WHERE    : W H E R E ;
-AND      : A N D ;
-VALUES   : V A L U E S ;
-LIMIT    : L I M I T ;
-TIME     : T I M E ;
+INSERT     : I N S E R T ;
+DELETE     : D E L E T E ;
+INTO       : I N T O ;
+SELECT     : S E L E C T ;
+COUNT      : C O U N T ;
+FROM       : F R O M ;
+WHERE      : W H E R E ;
+AND        : A N D ;
+VALUES     : V A L U E S ;
+LIMIT      : L I M I T ;
+TIME       : T I M E ;
+CREATE     : C R E A T E ;
+TIMESERIES : T I M E S E R I E S ;
+WITH       : W I T H ;
+DATATYPE   : D A T A T Y P E ;
+SHOW       : S H O W ;
+DEVICES    : D E V I C E S ;
 
 GTE : '>=' ;
 LTE : '<=' ;
@@ -81,6 +127,7 @@ RPAREN : ')' ;
 COMMA  : ',' ;
 DOT    : '.' ;
 SEMI   : ';' ;
+STAR   : '*' ;
 
 BOOLEAN
     : 'true'

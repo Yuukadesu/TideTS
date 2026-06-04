@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package tidets.datanode.v1;
-
-option go_package = "github.com/hanami/tidets/protocol/grpc-datanode/pb;pb";
-
-// DataNodeAdminService 面向服务端运维/管理的 RPC（与客户端会话 API 分离）。
-// 当前无方法，后续可在此增加 Flush、Stats 等。
-service DataNodeAdminService {}

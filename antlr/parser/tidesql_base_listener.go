@@ -32,11 +32,47 @@ func (s *BaseTideSQLListener) EnterInsertStmt(ctx *InsertStmtContext) {}
 // ExitInsertStmt is called when production insertStmt is exited.
 func (s *BaseTideSQLListener) ExitInsertStmt(ctx *InsertStmtContext) {}
 
+// EnterValueRow is called when production valueRow is entered.
+func (s *BaseTideSQLListener) EnterValueRow(ctx *ValueRowContext) {}
+
+// ExitValueRow is called when production valueRow is exited.
+func (s *BaseTideSQLListener) ExitValueRow(ctx *ValueRowContext) {}
+
 // EnterSelectStmt is called when production selectStmt is entered.
 func (s *BaseTideSQLListener) EnterSelectStmt(ctx *SelectStmtContext) {}
 
 // ExitSelectStmt is called when production selectStmt is exited.
 func (s *BaseTideSQLListener) ExitSelectStmt(ctx *SelectStmtContext) {}
+
+// EnterDeleteStmt is called when production deleteStmt is entered.
+func (s *BaseTideSQLListener) EnterDeleteStmt(ctx *DeleteStmtContext) {}
+
+// ExitDeleteStmt is called when production deleteStmt is exited.
+func (s *BaseTideSQLListener) ExitDeleteStmt(ctx *DeleteStmtContext) {}
+
+// EnterCreateTimeseriesStmt is called when production createTimeseriesStmt is entered.
+func (s *BaseTideSQLListener) EnterCreateTimeseriesStmt(ctx *CreateTimeseriesStmtContext) {}
+
+// ExitCreateTimeseriesStmt is called when production createTimeseriesStmt is exited.
+func (s *BaseTideSQLListener) ExitCreateTimeseriesStmt(ctx *CreateTimeseriesStmtContext) {}
+
+// EnterShowDevicesStmt is called when production showDevicesStmt is entered.
+func (s *BaseTideSQLListener) EnterShowDevicesStmt(ctx *ShowDevicesStmtContext) {}
+
+// ExitShowDevicesStmt is called when production showDevicesStmt is exited.
+func (s *BaseTideSQLListener) ExitShowDevicesStmt(ctx *ShowDevicesStmtContext) {}
+
+// EnterShowTimeseriesStmt is called when production showTimeseriesStmt is entered.
+func (s *BaseTideSQLListener) EnterShowTimeseriesStmt(ctx *ShowTimeseriesStmtContext) {}
+
+// ExitShowTimeseriesStmt is called when production showTimeseriesStmt is exited.
+func (s *BaseTideSQLListener) ExitShowTimeseriesStmt(ctx *ShowTimeseriesStmtContext) {}
+
+// EnterShowPattern is called when production showPattern is entered.
+func (s *BaseTideSQLListener) EnterShowPattern(ctx *ShowPatternContext) {}
+
+// ExitShowPattern is called when production showPattern is exited.
+func (s *BaseTideSQLListener) ExitShowPattern(ctx *ShowPatternContext) {}
 
 // EnterWhereClause is called when production whereClause is entered.
 func (s *BaseTideSQLListener) EnterWhereClause(ctx *WhereClauseContext) {}
@@ -73,6 +109,12 @@ func (s *BaseTideSQLListener) EnterMeasurement(ctx *MeasurementContext) {}
 
 // ExitMeasurement is called when production measurement is exited.
 func (s *BaseTideSQLListener) ExitMeasurement(ctx *MeasurementContext) {}
+
+// EnterDataTypeName is called when production dataTypeName is entered.
+func (s *BaseTideSQLListener) EnterDataTypeName(ctx *DataTypeNameContext) {}
+
+// ExitDataTypeName is called when production dataTypeName is exited.
+func (s *BaseTideSQLListener) ExitDataTypeName(ctx *DataTypeNameContext) {}
 
 // EnterTimestamp is called when production timestamp is entered.
 func (s *BaseTideSQLListener) EnterTimestamp(ctx *TimestampContext) {}

@@ -1,6 +1,6 @@
 package segment
 
-import "github.com/hanami/tidets/core/storageengine/model"
+import "github.com/hanami/tidets/core/tsmodel"
 
 type fileIndex struct {
 	minTs     int64
@@ -8,7 +8,7 @@ type fileIndex struct {
 	hasSeries map[string]struct{}
 }
 
-func buildFileIndex(series map[string][]model.Point) fileIndex {
+func buildFileIndex(series map[string][]tsmodel.Point) fileIndex {
 	idx := fileIndex{hasSeries: make(map[string]struct{}, len(series))}
 	var initialized bool
 	for keyStr, pts := range series {
@@ -32,7 +32,7 @@ func buildFileIndex(series map[string][]model.Point) fileIndex {
 	return idx
 }
 
-func (idx fileIndex) canSkip(key model.SeriesKey, start, end int64) bool {
+func (idx fileIndex) canSkip(key tsmodel.SeriesKey, start, end int64) bool {
 	if len(idx.hasSeries) == 0 {
 		return true
 	}

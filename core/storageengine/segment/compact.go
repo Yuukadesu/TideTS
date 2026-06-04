@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/utils"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 // CompactOptions 压缩策略（对齐 IoTDB LSM 子集：合并多层小文件）。
@@ -33,25 +33,34 @@ func (o CompactOptions) withDefaults() CompactOptions {
 
 // MaybeCompact 封存文件数达到阈值时合并最老的一批。
 func (mgr *Manager) MaybeCompact() error {
+	return mgr.MaybeCompactWithFilter(nil)
+}
+
+func (mgr *Manager) MaybeCompactWithFilter(filter func(string, []tsmodel.Point) []tsmodel.Point) error {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	if len(mgr.segments) < mgr.compactThreshold {
 		return nil
 	}
-	return mgr.compactLocked()
+	return mgr.compactLocked(filter)
 }
 
 // Compact 手动压缩：至少 2 个封存文件即合并最老的一批（忽略阈值）。
 func (mgr *Manager) Compact() error {
+	return mgr.CompactWithFilter(nil)
+}
+
+// CompactWithFilter 压缩并在合并时应用 tombstone 过滤。
+func (mgr *Manager) CompactWithFilter(filter func(string, []tsmodel.Point) []tsmodel.Point) error {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	if len(mgr.segments) < 2 {
 		return nil
 	}
-	return mgr.compactLocked()
+	return mgr.compactLocked(filter)
 }
 
-func (mgr *Manager) compactLocked() error {
+func (mgr *Manager) compactLocked(filter func(string, []tsmodel.Point) []tsmodel.Point) error {
 	n := len(mgr.segments)
 	if n < 2 {
 		return nil
@@ -62,7 +71,17 @@ func (mgr *Manager) compactLocked() error {
 	}
 
 	toMerge := mgr.segments[:mergeN]
-	merged := mergeFileSeries(toMerge)
+	merged := mergeFileSeries(toMerge, filter)
+
+	for _, old := range toMerge {
+		_ = old.close()
+		_ = os.Remove(old.path)
+	}
+	rest := mgr.segments[mergeN:]
+	if len(merged) == 0 {
+		mgr.segments = rest
+		return nil
+	}
 
 	mgr.nextID++
 	path := filepath.Join(mgr.dir, fmt.Sprintf("%06d.seg", mgr.nextID))
@@ -74,30 +93,30 @@ func (mgr *Manager) compactLocked() error {
 		_ = os.Remove(path)
 		return commons.Wrap("segment", commons.CodeCorrupt, "compact open", err)
 	}
-
-	for _, old := range toMerge {
-		_ = old.close()
-		_ = os.Remove(old.path)
-	}
-	rest := mgr.segments[mergeN:]
 	mgr.segments = append([]*file{sf}, rest...)
 	return nil
 }
 
-func mergeFileSeries(files []*file) map[string][]model.Point {
+func mergeFileSeries(files []*file, filter func(string, []tsmodel.Point) []tsmodel.Point) map[string][]tsmodel.Point {
 	if len(files) == 0 {
 		return nil
 	}
-	out := make(map[string][]model.Point)
+	out := make(map[string][]tsmodel.Point)
 	for _, sf := range files {
 		for keyStr, pts := range sf.exportSeries() {
+			if len(pts) == 0 {
+				continue
+			}
+			if filter != nil {
+				pts = filter(keyStr, pts)
+			}
 			if len(pts) == 0 {
 				continue
 			}
 			if existing, ok := out[keyStr]; ok {
 				out[keyStr] = utils.MergeSortedPreferNewer(existing, pts)
 			} else {
-				out[keyStr] = append([]model.Point(nil), pts...)
+				out[keyStr] = append([]tsmodel.Point(nil), pts...)
 			}
 		}
 	}

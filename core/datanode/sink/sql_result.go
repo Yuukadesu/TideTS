@@ -13,20 +13,29 @@ func SQLToExecuteResponse(res *result.Result) (*pb.ExecuteSQLResponse, error) {
 	}
 	out := &pb.ExecuteSQLResponse{
 		AffectedRows: int32(res.AffectedRows),
+		ColumnNames:  res.ColumnNames,
 	}
-	if res.Kind != result.KindSelect {
+	if res.Kind == result.KindSelect {
+		out.Rows = make([]*pb.SQLRow, 0, len(res.Rows))
+		for _, row := range res.Rows {
+			val, err := convert.ToPB(row.Value)
+			if err != nil {
+				return nil, err
+			}
+			out.Rows = append(out.Rows, &pb.SQLRow{
+				Timestamp: row.Timestamp,
+				Value:     val,
+			})
+		}
 		return out, nil
 	}
-	out.Rows = make([]*pb.SQLRow, 0, len(res.Rows))
-	for _, row := range res.Rows {
-		val, err := convert.ToPB(row.Value)
-		if err != nil {
-			return nil, err
+	if len(res.CatalogRows) > 0 {
+		out.CatalogRows = make([]*pb.SQLCatalogRow, 0, len(res.CatalogRows))
+		for _, row := range res.CatalogRows {
+			out.CatalogRows = append(out.CatalogRows, &pb.SQLCatalogRow{
+				Columns: row.Columns,
+			})
 		}
-		out.Rows = append(out.Rows, &pb.SQLRow{
-			Timestamp: row.Timestamp,
-			Value:     val,
-		})
 	}
 	return out, nil
 }

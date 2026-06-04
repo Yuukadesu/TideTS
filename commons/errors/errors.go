@@ -9,6 +9,7 @@ var (
 	ErrStorageDeviceMeasurementRequired = New("storage", CodeInvalidArgument, "device path and measurement are required")
 	ErrStorageTimestampInvalid          = New("storage", CodeInvalidArgument, "timestamp must be positive")
 	ErrStorageDataTypeMismatch          = New("storage", CodeInvalidArgument, "data type mismatch for series")
+	ErrStorageSchemaRequired            = New("storage", CodeInvalidArgument, "timeseries must be registered in schema before writing")
 	ErrStorageMixedDataTypesInChunk     = New("storage", CodeInvalidArgument, "mixed data types in one series chunk")
 )
 
@@ -112,6 +113,32 @@ var (
 	ErrSQLInvalidCmpOp              = New("sql", CodeInvalidArgument, "invalid time comparison operator")
 	ErrSQLInvalidTimeRange          = New("sql", CodeInvalidArgument, "invalid time range from WHERE clause")
 	ErrSQLLimitInvalid              = New("sql", CodeInvalidArgument, "limit must be positive")
+	ErrSQLDataTypeInvalid           = New("sql", CodeInvalidArgument, "invalid data type name")
+	ErrSQLWhereRequired             = New("sql", CodeInvalidArgument, "WHERE clause is required")
+)
+
+// ---------- schema ----------
+
+var (
+	ErrSchemaPathRequired     = New("schema", CodeInvalidArgument, "device path and measurement are required")
+	ErrSchemaDataTypeRequired = New("schema", CodeInvalidArgument, "data type is required")
+	ErrSchemaTimeseriesExists = New("schema", CodeInvalidArgument, "timeseries already exists")
+	ErrSchemaDataTypeMismatch = New("schema", CodeInvalidArgument, "data type mismatch for timeseries")
+	ErrSchemaMlogCorrupt      = New("schema", CodeCorrupt, "corrupt metadata log")
+	ErrSchemaSnapshotCorrupt  = New("schema", CodeCorrupt, "corrupt metadata snapshot")
+)
+
+// ErrSchemaSnapshotUnsupported snapshot 版本与当前代码不一致。
+func ErrSchemaSnapshotUnsupported(got, want uint32) *Error {
+	return Errorf("schema", CodeInvalidArgument,
+		"unsupported snapshot version %d (want %d), remove data-dir/system/schema", got, want)
+}
+
+// ---------- metadata ----------
+
+var (
+	ErrMetadataPathRequired = New("metadata", CodeInvalidArgument, "path is required")
+	ErrMetadataInvalidPath  = New("metadata", CodeInvalidArgument, "path must start with root")
 )
 
 // ---------- gRPC API 参数（DataNode） ----------

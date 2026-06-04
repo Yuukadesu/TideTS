@@ -15,7 +15,31 @@ func (v *BaseTideSQLVisitor) VisitInsertStmt(ctx *InsertStmtContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseTideSQLVisitor) VisitValueRow(ctx *ValueRowContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseTideSQLVisitor) VisitSelectStmt(ctx *SelectStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitDeleteStmt(ctx *DeleteStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitCreateTimeseriesStmt(ctx *CreateTimeseriesStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitShowDevicesStmt(ctx *ShowDevicesStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitShowTimeseriesStmt(ctx *ShowTimeseriesStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitShowPattern(ctx *ShowPatternContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -40,6 +64,10 @@ func (v *BaseTideSQLVisitor) VisitPath(ctx *PathContext) interface{} {
 }
 
 func (v *BaseTideSQLVisitor) VisitMeasurement(ctx *MeasurementContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitDataTypeName(ctx *DataTypeNameContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

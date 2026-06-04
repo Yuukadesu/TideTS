@@ -122,8 +122,13 @@ func handleMeta(cmd string, out io.Writer) (exit bool) {
 func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "TideTS SQL CLI (Session + ExecuteSQL)")
 	fmt.Fprintln(out, "Supported SQL:")
-	fmt.Fprintln(out, "  INSERT INTO <device>(<measurement>) VALUES (<timestamp>, <value>);")
+	fmt.Fprintln(out, "  INSERT INTO <device>(<measurement>) VALUES (<ts>, <val>)[, (<ts>, <val>)...];")
 	fmt.Fprintln(out, "  SELECT <measurement> FROM <device> [WHERE time <op> <n> [AND ...]] [LIMIT <n>];")
+	fmt.Fprintln(out, "  SELECT COUNT(<measurement>) FROM <device> [WHERE time <op> <n> [AND ...]];")
+	fmt.Fprintln(out, "  DELETE FROM <device>(<measurement>) WHERE time <op> <n> [AND ...];")
+	fmt.Fprintln(out, "  CREATE TIMESERIES <device>(<measurement>) WITH DATATYPE=<TYPE>;")
+	fmt.Fprintln(out, "  SHOW DEVICES [<path>[.**]];")
+	fmt.Fprintln(out, "  SHOW TIMESERIES <device>;")
 	fmt.Fprintln(out, "Meta: help, exit, quit")
 	fmt.Fprintln(out)
 }

@@ -996,17 +996,63 @@ func (x *SQLRow) GetValue() *TSValue {
 	return nil
 }
 
+type SQLCatalogRow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Columns       map[string]string      `protobuf:"bytes,1,rep,name=columns,proto3" json:"columns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SQLCatalogRow) Reset() {
+	*x = SQLCatalogRow{}
+	mi := &file_client_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SQLCatalogRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SQLCatalogRow) ProtoMessage() {}
+
+func (x *SQLCatalogRow) ProtoReflect() protoreflect.Message {
+	mi := &file_client_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SQLCatalogRow.ProtoReflect.Descriptor instead.
+func (*SQLCatalogRow) Descriptor() ([]byte, []int) {
+	return file_client_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *SQLCatalogRow) GetColumns() map[string]string {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
 type ExecuteSQLResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AffectedRows  int32                  `protobuf:"varint,1,opt,name=affected_rows,json=affectedRows,proto3" json:"affected_rows,omitempty"` // INSERT 时为 1
-	Rows          []*SQLRow              `protobuf:"bytes,2,rep,name=rows,proto3" json:"rows,omitempty"`                                      // SELECT 结果
+	AffectedRows  int32                  `protobuf:"varint,1,opt,name=affected_rows,json=affectedRows,proto3" json:"affected_rows,omitempty"` // INSERT / CREATE 时为 1
+	Rows          []*SQLRow              `protobuf:"bytes,2,rep,name=rows,proto3" json:"rows,omitempty"`                                      // SELECT 时序点
+	CatalogRows   []*SQLCatalogRow       `protobuf:"bytes,3,rep,name=catalog_rows,json=catalogRows,proto3" json:"catalog_rows,omitempty"`     // SHOW 结果
+	ColumnNames   []string               `protobuf:"bytes,4,rep,name=column_names,json=columnNames,proto3" json:"column_names,omitempty"`     // SHOW 表头
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecuteSQLResponse) Reset() {
 	*x = ExecuteSQLResponse{}
-	mi := &file_client_proto_msgTypes[15]
+	mi := &file_client_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1018,7 +1064,7 @@ func (x *ExecuteSQLResponse) String() string {
 func (*ExecuteSQLResponse) ProtoMessage() {}
 
 func (x *ExecuteSQLResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_client_proto_msgTypes[15]
+	mi := &file_client_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1031,7 +1077,7 @@ func (x *ExecuteSQLResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteSQLResponse.ProtoReflect.Descriptor instead.
 func (*ExecuteSQLResponse) Descriptor() ([]byte, []int) {
-	return file_client_proto_rawDescGZIP(), []int{15}
+	return file_client_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ExecuteSQLResponse) GetAffectedRows() int32 {
@@ -1044,6 +1090,20 @@ func (x *ExecuteSQLResponse) GetAffectedRows() int32 {
 func (x *ExecuteSQLResponse) GetRows() []*SQLRow {
 	if x != nil {
 		return x.Rows
+	}
+	return nil
+}
+
+func (x *ExecuteSQLResponse) GetCatalogRows() []*SQLCatalogRow {
+	if x != nil {
+		return x.CatalogRows
+	}
+	return nil
+}
+
+func (x *ExecuteSQLResponse) GetColumnNames() []string {
+	if x != nil {
+		return x.ColumnNames
 	}
 	return nil
 }
@@ -1124,10 +1184,17 @@ const file_client_proto_rawDesc = "" +
 	"\x03sql\x18\x02 \x01(\tR\x03sql\"Y\n" +
 	"\x06SQLRow\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x121\n" +
-	"\x05value\x18\x02 \x01(\v2\x1b.tidets.datanode.v1.TSValueR\x05value\"i\n" +
+	"\x05value\x18\x02 \x01(\v2\x1b.tidets.datanode.v1.TSValueR\x05value\"\x95\x01\n" +
+	"\rSQLCatalogRow\x12H\n" +
+	"\acolumns\x18\x01 \x03(\v2..tidets.datanode.v1.SQLCatalogRow.ColumnsEntryR\acolumns\x1a:\n" +
+	"\fColumnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd2\x01\n" +
 	"\x12ExecuteSQLResponse\x12#\n" +
 	"\raffected_rows\x18\x01 \x01(\x05R\faffectedRows\x12.\n" +
-	"\x04rows\x18\x02 \x03(\v2\x1a.tidets.datanode.v1.SQLRowR\x04rows*\xbc\x01\n" +
+	"\x04rows\x18\x02 \x03(\v2\x1a.tidets.datanode.v1.SQLRowR\x04rows\x12D\n" +
+	"\fcatalog_rows\x18\x03 \x03(\v2!.tidets.datanode.v1.SQLCatalogRowR\vcatalogRows\x12!\n" +
+	"\fcolumn_names\x18\x04 \x03(\tR\vcolumnNames*\xbc\x01\n" +
 	"\n" +
 	"TSDataType\x12\x1c\n" +
 	"\x18TS_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -1160,7 +1227,7 @@ func file_client_proto_rawDescGZIP() []byte {
 }
 
 var file_client_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_client_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_client_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_client_proto_goTypes = []any{
 	(TSDataType)(0),              // 0: tidets.datanode.v1.TSDataType
 	(*TSValue)(nil),              // 1: tidets.datanode.v1.TSValue
@@ -1178,7 +1245,9 @@ var file_client_proto_goTypes = []any{
 	(*QueryRangeResponse)(nil),   // 13: tidets.datanode.v1.QueryRangeResponse
 	(*ExecuteSQLRequest)(nil),    // 14: tidets.datanode.v1.ExecuteSQLRequest
 	(*SQLRow)(nil),               // 15: tidets.datanode.v1.SQLRow
-	(*ExecuteSQLResponse)(nil),   // 16: tidets.datanode.v1.ExecuteSQLResponse
+	(*SQLCatalogRow)(nil),        // 16: tidets.datanode.v1.SQLCatalogRow
+	(*ExecuteSQLResponse)(nil),   // 17: tidets.datanode.v1.ExecuteSQLResponse
+	nil,                          // 18: tidets.datanode.v1.SQLCatalogRow.ColumnsEntry
 }
 var file_client_proto_depIdxs = []int32{
 	0,  // 0: tidets.datanode.v1.TSValue.data_type:type_name -> tidets.datanode.v1.TSDataType
@@ -1188,24 +1257,26 @@ var file_client_proto_depIdxs = []int32{
 	1,  // 4: tidets.datanode.v1.PointData.value:type_name -> tidets.datanode.v1.TSValue
 	12, // 5: tidets.datanode.v1.QueryRangeResponse.points:type_name -> tidets.datanode.v1.PointData
 	1,  // 6: tidets.datanode.v1.SQLRow.value:type_name -> tidets.datanode.v1.TSValue
-	15, // 7: tidets.datanode.v1.ExecuteSQLResponse.rows:type_name -> tidets.datanode.v1.SQLRow
-	2,  // 8: tidets.datanode.v1.DataNodeSessionService.OpenSession:input_type -> tidets.datanode.v1.OpenSessionRequest
-	4,  // 9: tidets.datanode.v1.DataNodeSessionService.CloseSession:input_type -> tidets.datanode.v1.CloseSessionRequest
-	6,  // 10: tidets.datanode.v1.DataNodeSessionService.InsertPoint:input_type -> tidets.datanode.v1.InsertPointRequest
-	9,  // 11: tidets.datanode.v1.DataNodeSessionService.InsertBatch:input_type -> tidets.datanode.v1.InsertBatchRequest
-	11, // 12: tidets.datanode.v1.DataNodeSessionService.QueryRange:input_type -> tidets.datanode.v1.QueryRangeRequest
-	14, // 13: tidets.datanode.v1.DataNodeSessionService.ExecuteSQL:input_type -> tidets.datanode.v1.ExecuteSQLRequest
-	3,  // 14: tidets.datanode.v1.DataNodeSessionService.OpenSession:output_type -> tidets.datanode.v1.OpenSessionResponse
-	5,  // 15: tidets.datanode.v1.DataNodeSessionService.CloseSession:output_type -> tidets.datanode.v1.CloseSessionResponse
-	7,  // 16: tidets.datanode.v1.DataNodeSessionService.InsertPoint:output_type -> tidets.datanode.v1.InsertPointResponse
-	10, // 17: tidets.datanode.v1.DataNodeSessionService.InsertBatch:output_type -> tidets.datanode.v1.InsertBatchResponse
-	13, // 18: tidets.datanode.v1.DataNodeSessionService.QueryRange:output_type -> tidets.datanode.v1.QueryRangeResponse
-	16, // 19: tidets.datanode.v1.DataNodeSessionService.ExecuteSQL:output_type -> tidets.datanode.v1.ExecuteSQLResponse
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	18, // 7: tidets.datanode.v1.SQLCatalogRow.columns:type_name -> tidets.datanode.v1.SQLCatalogRow.ColumnsEntry
+	15, // 8: tidets.datanode.v1.ExecuteSQLResponse.rows:type_name -> tidets.datanode.v1.SQLRow
+	16, // 9: tidets.datanode.v1.ExecuteSQLResponse.catalog_rows:type_name -> tidets.datanode.v1.SQLCatalogRow
+	2,  // 10: tidets.datanode.v1.DataNodeSessionService.OpenSession:input_type -> tidets.datanode.v1.OpenSessionRequest
+	4,  // 11: tidets.datanode.v1.DataNodeSessionService.CloseSession:input_type -> tidets.datanode.v1.CloseSessionRequest
+	6,  // 12: tidets.datanode.v1.DataNodeSessionService.InsertPoint:input_type -> tidets.datanode.v1.InsertPointRequest
+	9,  // 13: tidets.datanode.v1.DataNodeSessionService.InsertBatch:input_type -> tidets.datanode.v1.InsertBatchRequest
+	11, // 14: tidets.datanode.v1.DataNodeSessionService.QueryRange:input_type -> tidets.datanode.v1.QueryRangeRequest
+	14, // 15: tidets.datanode.v1.DataNodeSessionService.ExecuteSQL:input_type -> tidets.datanode.v1.ExecuteSQLRequest
+	3,  // 16: tidets.datanode.v1.DataNodeSessionService.OpenSession:output_type -> tidets.datanode.v1.OpenSessionResponse
+	5,  // 17: tidets.datanode.v1.DataNodeSessionService.CloseSession:output_type -> tidets.datanode.v1.CloseSessionResponse
+	7,  // 18: tidets.datanode.v1.DataNodeSessionService.InsertPoint:output_type -> tidets.datanode.v1.InsertPointResponse
+	10, // 19: tidets.datanode.v1.DataNodeSessionService.InsertBatch:output_type -> tidets.datanode.v1.InsertBatchResponse
+	13, // 20: tidets.datanode.v1.DataNodeSessionService.QueryRange:output_type -> tidets.datanode.v1.QueryRangeResponse
+	17, // 21: tidets.datanode.v1.DataNodeSessionService.ExecuteSQL:output_type -> tidets.datanode.v1.ExecuteSQLResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_client_proto_init() }
@@ -1227,7 +1298,7 @@ func file_client_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_client_proto_rawDesc), len(file_client_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

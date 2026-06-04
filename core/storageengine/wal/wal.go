@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 // WAL 追加写日志（对齐 IoTDB：先 WAL 再写 MemTable）。
@@ -32,7 +32,6 @@ func OpenWithSync(dir string, mode SyncMode) (*WAL, error) {
 }
 
 // Offset 返回 wal.log 当前字节偏移（用于写 checkpoint）。
-// 注意：它会先 Flush bufio 缓冲，但不一定 fsync。
 func (w *WAL) Offset() (int64, error) {
 	if w == nil || w.file == nil {
 		return 0, nil
@@ -61,18 +60,32 @@ func FileSize(dir string) (int64, error) {
 	return fi.Size(), nil
 }
 
-func (w *WAL) AppendInsert(key model.SeriesKey, p model.Point) error {
+func (w *WAL) AppendInsert(key tsmodel.SeriesKey, p tsmodel.Point) error {
 	if err := writeInsert(w.w, key, p); err != nil {
 		return err
 	}
 	return w.syncIfNeeded()
 }
 
-func (w *WAL) AppendInsertBatch(records []model.BatchRecord) error {
+func (w *WAL) AppendInsertBatch(records []tsmodel.BatchRecord) error {
 	if len(records) == 0 {
 		return nil
 	}
 	if err := writeInsertBatch(w.w, records); err != nil {
+		return err
+	}
+	return w.syncIfNeeded()
+}
+
+func (w *WAL) AppendDelete(key tsmodel.SeriesKey, ts int64) error {
+	if err := writeDelete(w.w, key, ts); err != nil {
+		return err
+	}
+	return w.syncIfNeeded()
+}
+
+func (w *WAL) AppendDeleteRange(key tsmodel.SeriesKey, start, end int64) error {
+	if err := writeDeleteRange(w.w, key, start, end); err != nil {
 		return err
 	}
 	return w.syncIfNeeded()
@@ -100,8 +113,6 @@ func (w *WAL) Close() error {
 	return nil
 }
 
-// TruncateToZero 清空 wal.log 并将写指针回到起点。
-// 这是 “轻量裁剪” 的最简实现：只在引擎确认没有需要回放的数据时调用。
 func (w *WAL) TruncateToZero() error {
 	if w == nil || w.file == nil {
 		return nil
@@ -127,12 +138,10 @@ func Reset(dir string) (*WAL, error) {
 
 func ResetWithSync(dir string, mode SyncMode) (*WAL, error) {
 	_ = os.Remove(filepath.Join(dir, "wal.log"))
-	// wal.log 被重置后，旧 checkpoint 可能导致跳过新 WAL，因此同步清理。
 	_ = os.Remove(filepath.Join(dir, checkpointFilename))
 	return OpenWithSync(dir, mode)
 }
 
-// Sync 将缓冲刷盘（flush 完成后调用）。
 func (w *WAL) Sync() error {
 	if w.w != nil {
 		if err := w.w.Flush(); err != nil {
@@ -145,9 +154,14 @@ func (w *WAL) Sync() error {
 	return nil
 }
 
-// Replay 将 WAL 记录回放给 apply（用于恢复 MemTable，并走与在线写入相同的路由）。
+// Replay 将 WAL 记录回放（兼容仅 Insert 的旧回调）。
 func Replay(dir string, apply InsertFn) error {
-	if apply == nil {
+	return ReplayWithOps(dir, ReplayOps{Insert: apply})
+}
+
+// ReplayWithOps 回放 WAL 写入与删除操作。
+func ReplayWithOps(dir string, ops ReplayOps) error {
+	if ops.Insert == nil {
 		return commons.ErrWALApplyRequired
 	}
 	path := filepath.Join(dir, "wal.log")
@@ -169,9 +183,8 @@ func Replay(dir string, apply InsertFn) error {
 	if off, err := ReadCheckpoint(dir); err == nil && off > 0 {
 		if _, err := f.Seek(off, io.SeekStart); err == nil {
 			r = bufio.NewReader(f)
-			// 探测 checkpoint 是否落在 record 边界；否则回退到全量回放。
 			op, err := readHeader(r)
-			if err == nil && (op == opInsert || op == opInsertBatch) {
+			if err == nil && isKnownOp(op) {
 				firstOp = op
 				hasFirstOp = true
 				goto startReplay
@@ -208,15 +221,41 @@ startReplay:
 				}
 				return err
 			}
-			if err := apply(key, p); err != nil {
+			if err := ops.Insert(key, p); err != nil {
 				return err
 			}
 		case opInsertBatch:
-			if err := readInsertBatch(r, apply); err != nil {
+			if err := readInsertBatch(r, ops.Insert); err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil
 				}
 				return err
+			}
+		case opDelete:
+			key, ts, err := readDelete(r)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil
+				}
+				return err
+			}
+			if ops.Delete != nil {
+				if err := ops.Delete(key, ts); err != nil {
+					return err
+				}
+			}
+		case opDeleteRange:
+			key, start, end, err := readDeleteRange(r)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil
+				}
+				return err
+			}
+			if ops.DeleteRange != nil {
+				if err := ops.DeleteRange(key, start, end); err != nil {
+					return err
+				}
 			}
 		default:
 			return commons.ErrWALCorruptRecord

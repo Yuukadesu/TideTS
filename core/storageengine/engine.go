@@ -8,10 +8,10 @@ import (
 
 	"github.com/hanami/tidets/commons/errors"
 	"github.com/hanami/tidets/core/storageengine/flush"
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/segment"
 	"github.com/hanami/tidets/core/storageengine/utils"
 	"github.com/hanami/tidets/core/storageengine/wal"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 // Engine 存储引擎：WAL + WorkingMemTable（normal/delayed）+ Segment（.seg）。
@@ -21,10 +21,12 @@ type Engine struct {
 	asyncFlush bool
 	walSync    wal.SyncMode
 	walTrunc   bool
+	schemaHas  func(SeriesKey) bool
 	mu         sync.RWMutex
 	ws         *workingSet
 	wal        *wal.WAL
 	segments   *segment.Manager
+	tombstones *tombstoneIndex
 	pending    []pendingFlush
 	flushMgr   *flush.Manager
 	lastFlush  time.Time
@@ -32,7 +34,7 @@ type Engine struct {
 }
 
 type pendingFlush struct {
-	snap      map[string][]model.Point
+	snap      map[string][]tsmodel.Point
 	walOffset int64
 }
 
@@ -88,15 +90,38 @@ func OpenWithOptions(opts Options) (*Engine, error) {
 	}
 	stable := segMgr.StableTimeByDevice()
 	ws := newWorkingSet(stable)
+	tombstoneLog, err := openTombstoneLog(opts.DataDir, walSync)
+	if err != nil {
+		return nil, err
+	}
+	tombstones := newTombstoneIndex(tombstoneLog)
+	if err := loadTombstoneLog(opts.DataDir, tombstones.Restore); err != nil {
+		_ = tombstones.Close()
+		return nil, err
+	}
 
-	if err := wal.Replay(opts.DataDir, func(key model.SeriesKey, p model.Point) error {
-		return ws.Insert(key, p)
+	if err := wal.ReplayWithOps(opts.DataDir, wal.ReplayOps{
+		Insert: func(key tsmodel.SeriesKey, p tsmodel.Point) error {
+			return ws.Insert(key, p)
+		},
+		Delete: func(key tsmodel.SeriesKey, ts int64) error {
+			tombstones.Restore(key.String(), ts, ts)
+			ws.Delete(key, ts)
+			return nil
+		},
+		DeleteRange: func(key tsmodel.SeriesKey, start, end int64) error {
+			tombstones.Restore(key.String(), start, end)
+			ws.DeleteRange(key, start, end)
+			return nil
+		},
 	}); err != nil {
+		_ = tombstones.Close()
 		return nil, err
 	}
 
 	w, err := wal.OpenWithSync(opts.DataDir, walSync)
 	if err != nil {
+		_ = tombstones.Close()
 		return nil, err
 	}
 
@@ -109,6 +134,7 @@ func OpenWithOptions(opts Options) (*Engine, error) {
 		ws:         ws,
 		wal:        w,
 		segments:   segMgr,
+		tombstones: tombstones,
 	}
 	if asyncFlush {
 		e.flushMgr = flush.NewManager(64)
@@ -118,6 +144,13 @@ func OpenWithOptions(opts Options) (*Engine, error) {
 
 func (e *Engine) Insert(key SeriesKey, p Point) error {
 	return e.InsertBatch([]Record{{Key: key, Point: p}})
+}
+
+// BindSchemaGuard 绑定 schema 守卫；绑定后裸写必须先有 catalog。
+func (e *Engine) BindSchemaGuard(has func(SeriesKey) bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.schemaHas = has
 }
 
 // Record 单条写入记录。
@@ -131,12 +164,15 @@ func (e *Engine) InsertBatch(records []Record) error {
 	if len(records) == 0 {
 		return nil
 	}
-	batch := make([]model.BatchRecord, 0, len(records))
+	batch := make([]tsmodel.BatchRecord, 0, len(records))
 	for _, rec := range records {
 		if err := utils.ValidatePoint(rec.Key, rec.Point); err != nil {
 			return err
 		}
-		batch = append(batch, model.BatchRecord{Key: rec.Key, Point: rec.Point})
+		if e.schemaHas != nil && !e.schemaHas(rec.Key) {
+			return commons.ErrStorageSchemaRequired
+		}
+		batch = append(batch, tsmodel.BatchRecord{Key: rec.Key, Point: rec.Point})
 	}
 
 	e.mu.Lock()
@@ -211,15 +247,28 @@ func (e *Engine) scheduleFlushWhileLocked() error {
 
 // Compact 手动触发 segment 压缩（合并最老的若干 .seg）。
 func (e *Engine) Compact() error {
-	return e.segments.Compact()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if err := e.segments.CompactWithFilter(e.tombstoneFilter()); err != nil {
+		return err
+	}
+	if err := e.pruneTombstonesLocked(); err != nil {
+		return err
+	}
+	if e.walSync == wal.SyncOnFlush && e.tombstones != nil {
+		if err := e.tombstones.Sync(); err != nil {
+			return err
+		}
+	}
+	e.tryWALResetLocked()
+	return nil
 }
 
 func (e *Engine) doFlushAndFinalize(job pendingFlush) error {
 	if err := e.segments.Flush(job.snap); err != nil {
 		return err
 	}
-	// Flush 内 seal 后可能已 MaybeCompact；此处再尝试一次（仅 append 未 seal 时）
-	if err := e.segments.MaybeCompact(); err != nil {
+	if err := e.segments.MaybeCompactWithFilter(e.tombstoneFilter()); err != nil {
 		return err
 	}
 	e.mu.Lock()
@@ -229,13 +278,21 @@ func (e *Engine) doFlushAndFinalize(job pendingFlush) error {
 	}
 	e.ws.applyFlush(job.snap)
 	e.lastFlush = time.Now()
+	if err := e.pruneTombstonesLocked(); err != nil {
+		return err
+	}
 	// SyncOnFlush 模式：仅在 flush 成功后再 fsync WAL（更高吞吐，但 flush 边界提供更强持久性保证）。
 	if e.walSync == wal.SyncOnFlush && e.wal != nil {
 		if err := e.wal.Sync(); err != nil {
 			return err
 		}
 	}
-	_ = wal.WriteCheckpoint(e.dir, job.walOffset)
+	if e.walSync == wal.SyncOnFlush && e.tombstones != nil {
+		if err := e.tombstones.Sync(); err != nil {
+			return err
+		}
+	}
+	_ = wal.WriteCheckpoint(e.dir, e.checkpointOffsetLocked(job.walOffset))
 	e.tryWALResetLocked()
 	return nil
 }
@@ -253,9 +310,58 @@ func (e *Engine) walEndOffsetLocked() int64 {
 	return off
 }
 
+func (e *Engine) checkpointOffsetLocked(offset int64) int64 {
+	if e.tombstones != nil && !e.tombstones.IsEmpty() {
+		return 0
+	}
+	return offset
+}
+
+func (e *Engine) pruneTombstonesLocked() error {
+	if e.tombstones == nil || e.tombstones.IsEmpty() {
+		return nil
+	}
+	snapshot := e.tombstones.Snapshot()
+	drop := make(map[string]map[timeRange]struct{})
+	for keyStr, ranges := range snapshot {
+		device, measurement := tsmodel.SplitSeriesKey(keyStr)
+		if measurement == "" {
+			continue
+		}
+		key := SeriesKey{DevicePath: device, Measurement: measurement}
+		for _, r := range ranges {
+			if e.hasRawPointsLocked(key, r.start, r.end) {
+				continue
+			}
+			if drop[keyStr] == nil {
+				drop[keyStr] = make(map[timeRange]struct{})
+			}
+			drop[keyStr][r] = struct{}{}
+		}
+	}
+	return e.tombstones.Prune(drop)
+}
+
+func (e *Engine) hasRawPointsLocked(key SeriesKey, start, end int64) bool {
+	mem := e.queryMemLocked(key, start, end)
+	if len(mem) > 0 {
+		return true
+	}
+	disk := e.segments.QueryTimestamps(key, start, end)
+	return len(disk) > 0
+}
+
 func (e *Engine) tryWALResetLocked() {
 	if len(e.pending) > 0 || e.ws.PointCount() > 0 {
 		return
+	}
+	if e.tombstones != nil && !e.tombstones.IsEmpty() {
+		return
+	}
+	if e.walSync == wal.SyncOnFlush && e.tombstones != nil {
+		if err := e.tombstones.Sync(); err != nil {
+			return
+		}
 	}
 	// 空闲且所有 flush 已完成：此时 wal 里不应再有需要回放的数据。
 	if e.walTrunc && e.wal != nil {
@@ -329,6 +435,11 @@ func (e *Engine) Close() error {
 		_ = e.wal.Sync()
 		_ = e.wal.Close()
 		e.wal = nil
+	}
+	if e.tombstones != nil {
+		_ = e.tombstones.Sync()
+		_ = e.tombstones.Close()
+		e.tombstones = nil
 	}
 	e.mu.Unlock()
 	return nil

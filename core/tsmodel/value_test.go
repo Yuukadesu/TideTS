@@ -1,4 +1,4 @@
-package model
+package tsmodel
 
 import (
 	"bytes"

@@ -110,9 +110,15 @@ message SQLRow {
   TSValue value = 2;
 }
 
+message SQLCatalogRow {
+  map<string, string> columns = 1;
+}
+
 message ExecuteSQLResponse {
-  int32 affected_rows = 1; // INSERT 时为 1
-  repeated SQLRow rows = 2; // SELECT 结果
+  int32 affected_rows = 1; // INSERT / CREATE 时为 1
+  repeated SQLRow rows = 2; // SELECT 时序点
+  repeated SQLCatalogRow catalog_rows = 3; // SHOW 结果
+  repeated string column_names = 4; // SHOW 表头
 }
 
 // ---------- 服务 ----------

@@ -26,6 +26,11 @@ var (
 // Checker 鉴权中心：登录 + 路径权限（对齐 IoTDB AuthorityChecker 子集）。
 type Checker struct{}
 
+// DefaultChecker 默认鉴权器（登录 + 路径权限）。
+func DefaultChecker() Checker {
+	return Checker{}
+}
+
 // Authenticate 校验用户名密码，返回 userID。
 func (Checker) Authenticate(username, password string) (int64, bool, error) {
 	if username == "" || password == "" {

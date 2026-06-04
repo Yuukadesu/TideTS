@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func TestSealedSegmentUsesMmap(t *testing.T) {
@@ -14,11 +14,11 @@ func TestSealedSegmentUsesMmap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := model.SeriesKey{DevicePath: "d1", Measurement: "s1"}
-	if err := mgr.Flush(map[string][]model.Point{
+	key := tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}
+	if err := mgr.Flush(map[string][]tsmodel.Point{
 		key.String(): {
-			{Timestamp: 1, Value: model.NewDouble(1)},
-			{Timestamp: 2, Value: model.NewDouble(2)},
+			{Timestamp: 1, Value: tsmodel.NewDouble(1)},
+			{Timestamp: 2, Value: tsmodel.NewDouble(2)},
 		},
 	}); err != nil {
 		t.Fatal(err)
@@ -54,15 +54,46 @@ func TestSealedSegmentUsesMmap(t *testing.T) {
 	}
 }
 
+func TestQueryTimestampsMatchesQuery(t *testing.T) {
+	dir := t.TempDir()
+	mgr, err := OpenManager(dir, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}
+	points := []tsmodel.Point{
+		{Timestamp: 10, Value: tsmodel.NewDouble(1)},
+		{Timestamp: 20, Value: tsmodel.NewDouble(2)},
+		{Timestamp: 30, Value: tsmodel.NewDouble(3)},
+	}
+	if err := mgr.Flush(map[string][]tsmodel.Point{key.String(): points}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := mgr.Query(key, 10, 30)
+	tsOnly := mgr.QueryTimestamps(key, 10, 30)
+	if len(got) != len(tsOnly) || len(got) != 3 {
+		t.Fatalf("query=%+v tsOnly=%+v", got, tsOnly)
+	}
+	for i := range got {
+		if got[i].Timestamp != tsOnly[i].Timestamp {
+			t.Fatalf("ts mismatch at %d: %+v vs %+v", i, got[i], tsOnly[i])
+		}
+		if tsOnly[i].Value.Type != tsmodel.DataTypeUnknown {
+			t.Fatalf("timestamp-only query should not load values: %+v", tsOnly[i])
+		}
+	}
+}
+
 func TestActiveSegmentStaysInMemory(t *testing.T) {
 	dir := t.TempDir()
 	mgr, err := OpenManager(dir, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := model.SeriesKey{DevicePath: "d1", Measurement: "s1"}
-	if err := mgr.Flush(map[string][]model.Point{
-		key.String(): {{Timestamp: 1, Value: model.NewDouble(1)}},
+	key := tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}
+	if err := mgr.Flush(map[string][]tsmodel.Point{
+		key.String(): {{Timestamp: 1, Value: tsmodel.NewDouble(1)}},
 	}); err != nil {
 		t.Fatal(err)
 	}

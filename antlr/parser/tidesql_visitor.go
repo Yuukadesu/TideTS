@@ -13,8 +13,26 @@ type TideSQLVisitor interface {
 	// Visit a parse tree produced by TideSQLParser#insertStmt.
 	VisitInsertStmt(ctx *InsertStmtContext) interface{}
 
+	// Visit a parse tree produced by TideSQLParser#valueRow.
+	VisitValueRow(ctx *ValueRowContext) interface{}
+
 	// Visit a parse tree produced by TideSQLParser#selectStmt.
 	VisitSelectStmt(ctx *SelectStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#deleteStmt.
+	VisitDeleteStmt(ctx *DeleteStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#createTimeseriesStmt.
+	VisitCreateTimeseriesStmt(ctx *CreateTimeseriesStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#showDevicesStmt.
+	VisitShowDevicesStmt(ctx *ShowDevicesStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#showTimeseriesStmt.
+	VisitShowTimeseriesStmt(ctx *ShowTimeseriesStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#showPattern.
+	VisitShowPattern(ctx *ShowPatternContext) interface{}
 
 	// Visit a parse tree produced by TideSQLParser#whereClause.
 	VisitWhereClause(ctx *WhereClauseContext) interface{}
@@ -33,6 +51,9 @@ type TideSQLVisitor interface {
 
 	// Visit a parse tree produced by TideSQLParser#measurement.
 	VisitMeasurement(ctx *MeasurementContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#dataTypeName.
+	VisitDataTypeName(ctx *DataTypeNameContext) interface{}
 
 	// Visit a parse tree produced by TideSQLParser#timestamp.
 	VisitTimestamp(ctx *TimestampContext) interface{}

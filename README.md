@@ -49,7 +49,7 @@ go build -o bin/datanode ./cmd/datanode
 | `SessionID()` | 服务端会话 ID |
 | `InsertPoint` / `InsertBatch` | 写入测点 |
 | `QueryRange` / `QueryRangeWithLimit` | 按时间范围查询 |
-| `ExecuteSQL` | 最简 SQL：`INSERT` / `SELECT` |
+| `ExecuteSQL` | SQL：`INSERT` / `SELECT` / `COUNT` / `DELETE` / `CREATE TIMESERIES` / `SHOW` |
 | `SetFetchSize` | 影响 `QueryRange` 默认条数上限 |
 
 完整可编译示例见 [`examples/session_sql_test.go`](examples/session_sql_test.go)。
@@ -80,18 +80,22 @@ go run ./cmd/tidets-cli -host 127.0.0.1 -port 5556
 
 或 `make build-cli && ./bin/tidets-cli`。在 `tidets>` 提示符下输入 SQL（以 `;` 结束），`exit` / `quit` 退出。
 
-### 最简 SQL（INSERT / SELECT）
+### SQL（INSERT / SELECT / DDL / SHOW）
 
 通过 Session `ExecuteSQL` 或 gRPC `ExecuteSQL` 执行（需先 `OpenSession`）：
 
 ```sql
 INSERT INTO root.sg1.d1(temperature) VALUES (100, 25.5);
+INSERT INTO root.sg1.d1(temperature) VALUES (100, 25.5), (101, 26.0);
 SELECT temperature FROM root.sg1.d1 WHERE time >= 100 AND time <= 200 LIMIT 10;
+SELECT COUNT(temperature) FROM root.sg1.d1 WHERE time >= 100 AND time <= 200;
+DELETE FROM root.sg1.d1(temperature) WHERE time >= 100 AND time <= 200;
+CREATE TIMESERIES root.sg1.d1(temperature) WITH DATATYPE=DOUBLE;
+SHOW DEVICES root.sg1.**;
+SHOW TIMESERIES root.sg1.d1;
 ```
 
-- 关键字大小写不敏感（`insert` / `INSERT` 均可）。
-- `WHERE` 可省略（全时间范围）；`LIMIT` 可省略（默认 10000）。
-- 同时间戳再次 `INSERT` 视为覆盖写（upsert）。
+- 同时间戳再次 `INSERT` 视为覆盖写（upsert）；`DELETE` 必须带 `WHERE` 时间条件。
 
 ### 端到端测试
 
@@ -109,20 +113,27 @@ go test ./examples/... -run TestSessionInsertLifecycle -count=1
 
 ```text
 data/
-├── wal.log                 # 预写日志（崩溃恢复）
+├── system/schema/
+│   ├── mlog.bin            # 元数据 DDL 追加日志（CREATE TIMESERIES 等）
+│   └── mtree.snapshot      # MTree 快照（含 mlog checkpoint）
+├── wal.log                 # 点数据预写日志（崩溃恢复）
+├── wal.checkpoint          # WAL 回放起点（仅在 tombstone 已清理时推进）
+├── tombstones.log          # 删除区间日志（保护 sealed .seg 查询与重启恢复）
 └── segments/
     ├── active.seg          # 当前可追加的 segment
     └── 000001.seg          # 封存后的只读 segment
 ```
 
-- **WAL**：在线写入先落盘，再进 MemTable；全部 flush 且 MemTable 为空后可重置。
-- **segments**：MemTable 刷盘写入；多次 flush 可追加到 `active.seg`，达到阈值后 seal 为编号 `.seg`，并可 compaction 合并。
+- **system/schema**：schema + metadata 统一 MTree；写入顺序为 mlog → 内存树 → 定期 snapshot（对齐 IoTDB `mlog.bin` + `mtree.snapshot`）。
+- **WAL**：在线写入先落盘，再进 MemTable；只有在待回放数据和 tombstone 都已清理后才会 reset / truncate。
+- **tombstones**：`DELETE` 会把区间追加到 `tombstones.log`；查询 / `COUNT` 先归并原始点，再按 tombstone 过滤。
+- **segments**：MemTable 刷盘先进入 `active.seg`；close/seal 时按 `activeMem` 当前状态重写为编号 `.seg`，保证已删点不会在 seal 后复活；sealed `.seg` 可继续 compaction 合并。
 
 ## 修改磁盘格式后怎么办？
 
-本仓库**只维护当前一种** `.seg` / WAL 布局，不读取旧格式文件。
+本仓库**只维护当前一种** `.seg` / WAL / mlog / snapshot 布局，不读取旧格式文件。
 
-若你改了 `core/storageengine/segment/format.go` 里的 `version`、chunk 布局，或 `core/storageengine/wal/record.go` 的记录格式：
+若你改了 `core/storageengine/segment/format.go` 里的 `version`、chunk 布局，`core/storageengine/wal/record.go` 或 `core/storageengine/tombstone_log.go` 的记录格式，或 `core/schemaengine/mlog.go` / `snapshot.go` 的二进制布局：
 
 ```bash
 # 停掉 DataNode 后
@@ -169,6 +180,30 @@ Insert RPC → Engine → WAL → MemTable → (满/Flush) → active.seg → se
 查询路径：MemTable(normal+delayed) ∪ 已加载 .seg → 归并 → 按时间范围 + limit 返回
 ```
 
+删除路径（简化）：
+
+```mermaid
+sequenceDiagram
+  participant SQL
+  participant Engine
+  participant WAL
+  participant Mem as MemTable_activeSeg
+  participant Tomb as tombstones.log
+  participant Seg as sealedSeg
+
+  SQL->>Engine: DeleteRange
+  Engine->>WAL: opDelete/opDeleteRange
+  Engine->>Mem: 物理删除内存与 active.seg 镜像
+  Engine->>Tomb: 追加 tombstone 区间
+  Note over Seg: sealed .seg 仍可能保留旧点
+  Engine->>Engine: Query/Count 时先 merge 再 Filter
+  Engine->>Seg: Compact 时带 tombstone 过滤重写
+```
+
+- `active.seg` 的删除是**物理删除**：`activeMem` 会直接移除点，seal 时按当前 `activeMem` 重写磁盘文件。
+- sealed `.seg` 的删除是**逻辑删除**：依赖 `tombstones.log` 在查询阶段过滤，直到 compaction 把旧点真正清掉。
+- `wal.checkpoint` 只有在 tombstone 已 prune 并且无需再依赖旧 WAL delete 记录时才会前移；否则回放从头开始，避免重启后漏删。
+
 ## 项目结构
 
 ```text
@@ -188,9 +223,11 @@ core/
   queryengine/         # 执行计划、Executor、Service
   datanode/
     grpcserver/        # gRPC 实现（含 ExecuteSQL）
+    metadata/          # 元数据目录查询（SHOW DEVICES 等，委托 schemaengine）
     session/           # 会话管理
     auth/              # 鉴权
     sink/              # SQL 结果 → protobuf
+  schemaengine/        # MTree + mlog + snapshot（schema 持久化）
   storageengine/       # 存储引擎（WAL / MemTable / segment）
 examples/              # 端到端测试
 ```

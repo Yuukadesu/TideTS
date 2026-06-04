@@ -2,12 +2,15 @@ package queryengine
 
 import (
 	"context"
+
+	"github.com/hanami/tidets/core/dataplane"
+	"github.com/hanami/tidets/core/queryengine/backend"
 	"github.com/hanami/tidets/core/queryengine/executor"
 	"github.com/hanami/tidets/core/queryengine/plan"
 	"github.com/hanami/tidets/core/queryengine/result"
-	querystore "github.com/hanami/tidets/core/queryengine/storage"
 	sqlparser "github.com/hanami/tidets/core/sql/parser"
-	"github.com/hanami/tidets/core/sql/planner"
+	"github.com/hanami/tidets/core/storageengine"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 // Service 解析 SQL → 计划 → 执行（INSERT / SELECT）。
@@ -16,16 +19,23 @@ type Service struct {
 }
 
 // NewService 创建 SQL 查询服务。
-func NewService(store querystore.Backend) *Service {
+func NewService(engine *storageengine.Engine, gw *dataplane.Gateway, catalog backend.CatalogBackend) *Service {
 	return &Service{
-		exec: &executor.Executor{Store: store, DefaultLimit: 10000},
+		exec: &executor.Executor{
+			Store:        &backend.EngineBackend{Writer: gw, Reader: engine},
+			Catalog:      catalog,
+			DefaultLimit: executor.DefaultQueryLimit,
+		},
 	}
 }
 
-// NewServiceWithLimit 指定 SELECT 默认 limit（SQL 未写 LIMIT 时使用）。
-func NewServiceWithLimit(store querystore.Backend, defaultLimit int) *Service {
+// NewServiceWithBackend 注入自定义 Backend（测试用）。
+func NewServiceWithBackend(store backend.Backend, catalog backend.CatalogBackend, defaultLimit int) *Service {
+	if defaultLimit <= 0 {
+		defaultLimit = executor.DefaultQueryLimit
+	}
 	return &Service{
-		exec: &executor.Executor{Store: store, DefaultLimit: defaultLimit},
+		exec: &executor.Executor{Store: store, Catalog: catalog, DefaultLimit: defaultLimit},
 	}
 }
 
@@ -35,7 +45,7 @@ func Plan(sqlText string) (plan.Plan, error) {
 	if err != nil {
 		return plan.Plan{}, err
 	}
-	return planner.Build(stmt)
+	return plan.Build(stmt)
 }
 
 // Execute 执行一条 SQL。
@@ -50,4 +60,29 @@ func (s *Service) Execute(ctx context.Context, sqlText string) (*result.Result, 
 // ExecutePlan 执行已有计划。
 func (s *Service) ExecutePlan(ctx context.Context, p plan.Plan) (*result.Result, error) {
 	return s.exec.Execute(ctx, p)
+}
+
+// QueryRange 统一范围查询入口，供非 SQL RPC 复用 queryengine。
+func (s *Service) QueryRange(ctx context.Context, key tsmodel.SeriesKey, start, end int64, limit int) (*result.Result, error) {
+	return s.exec.Execute(ctx, plan.Plan{
+		Kind: plan.KindSelect,
+		Select: &plan.Select{
+			Key:   key,
+			Start: start,
+			End:   end,
+			Limit: limit,
+		},
+	})
+}
+
+// ResolveQueryLimit 合并请求 limit、session fetchSize 与默认值。
+func ResolveQueryLimit(requestLimit, sessionFetchSize int) int {
+	limit := requestLimit
+	if limit <= 0 {
+		limit = sessionFetchSize
+	}
+	if limit <= 0 {
+		limit = executor.DefaultQueryLimit
+	}
+	return limit
 }

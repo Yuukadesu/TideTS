@@ -68,7 +68,11 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterDataNodeSessionServiceServer(grpcServer, grpcserver.New(engine))
+	srv, err := grpcserver.New(engine)
+	if err != nil {
+		log.Fatalf("open catalog: %v", err)
+	}
+	pb.RegisterDataNodeSessionServiceServer(grpcServer, srv)
 
 	go func() {
 		log.Printf(

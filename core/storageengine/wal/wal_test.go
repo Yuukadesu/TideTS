@@ -3,7 +3,7 @@ package wal
 import (
 	"testing"
 
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func TestWALBatchReplay(t *testing.T) {
@@ -13,9 +13,9 @@ func TestWALBatchReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records := []model.BatchRecord{
-		{Key: model.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: model.Point{Timestamp: 1, Value: model.NewDouble(1)}},
-		{Key: model.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: model.Point{Timestamp: 2, Value: model.NewDouble(2)}},
+	records := []tsmodel.BatchRecord{
+		{Key: tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: tsmodel.Point{Timestamp: 1, Value: tsmodel.NewDouble(1)}},
+		{Key: tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: tsmodel.Point{Timestamp: 2, Value: tsmodel.NewDouble(2)}},
 	}
 	if err := w.AppendInsertBatch(records); err != nil {
 		t.Fatal(err)
@@ -25,7 +25,7 @@ func TestWALBatchReplay(t *testing.T) {
 	}
 
 	var n int
-	if err := Replay(dir, func(key model.SeriesKey, p model.Point) error {
+	if err := Replay(dir, func(key tsmodel.SeriesKey, p tsmodel.Point) error {
 		n++
 		if key.DevicePath != "d1" || p.Timestamp <= 0 {
 			t.Fatalf("unexpected %v %v", key, p)

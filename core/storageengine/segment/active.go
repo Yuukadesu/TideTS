@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/utils"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func (mgr *Manager) ensureActiveHeader() error {
@@ -28,7 +28,7 @@ func (mgr *Manager) ensureActiveHeader() error {
 	return f.Sync()
 }
 
-func (mgr *Manager) appendToActive(series map[string][]model.Point) error {
+func (mgr *Manager) appendToActive(series map[string][]tsmodel.Point) error {
 	if err := mgr.ensureActiveHeader(); err != nil {
 		return err
 	}
@@ -68,9 +68,9 @@ func (mgr *Manager) appendToActive(series map[string][]model.Point) error {
 	return nil
 }
 
-func (mgr *Manager) mergeIntoActiveMem(series map[string][]model.Point) {
+func (mgr *Manager) mergeIntoActiveMem(series map[string][]tsmodel.Point) {
 	if mgr.activeMem == nil {
-		mgr.activeMem = &file{path: mgr.activePath, mem: make(map[string][]model.Point)}
+		mgr.activeMem = &file{path: mgr.activePath, mem: make(map[string][]tsmodel.Point)}
 	}
 	for keyStr, pts := range series {
 		existing := mgr.activeMem.mem[keyStr]
@@ -90,38 +90,23 @@ func (mgr *Manager) sealActiveLocked() error {
 	if mgr.activeMem == nil {
 		return nil
 	}
-	f, err := os.OpenFile(mgr.activePath, os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+	series := mgr.activeMem.exportSeries()
+	if len(series) > 0 {
+		mgr.nextID++
+		name := filepath.Join(mgr.dir, fmt.Sprintf("%06d.seg", mgr.nextID))
+		if err := writeFile(name, series); err != nil {
+			return err
 		}
-		return err
+		sf, err := openFileMmap(name)
+		if err != nil {
+			return err
+		}
+		mgr.segments = append(mgr.segments, sf)
 	}
-	if err := binary.Write(f, binary.LittleEndian, uint32(0)); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := binary.Write(f, binary.LittleEndian, endMagic); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		return err
-	}
-	_ = f.Close()
-
-	mgr.nextID++
-	name := filepath.Join(mgr.dir, fmt.Sprintf("%06d.seg", mgr.nextID))
-	if err := os.Rename(mgr.activePath, name); err != nil {
+	if err := os.Remove(mgr.activePath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	mgr.activeMem = nil
-	sf, err := openFileMmap(name)
-	if err != nil {
-		return err
-	}
-	mgr.segments = append(mgr.segments, sf)
 	mgr.activePath = filepath.Join(mgr.dir, ActiveFileName)
 	mgr.activeFlushes = 0
 	return nil

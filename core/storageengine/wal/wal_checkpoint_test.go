@@ -3,7 +3,7 @@ package wal
 import (
 	"testing"
 
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func TestCheckpointReadWrite(t *testing.T) {
@@ -55,8 +55,8 @@ func TestReplayHonorsCheckpointOffset(t *testing.T) {
 	}
 
 	// batch 1
-	if err := w.AppendInsertBatch([]model.BatchRecord{
-		{Key: model.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: model.Point{Timestamp: 1, Value: model.NewDouble(1)}},
+	if err := w.AppendInsertBatch([]tsmodel.BatchRecord{
+		{Key: tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: tsmodel.Point{Timestamp: 1, Value: tsmodel.NewDouble(1)}},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -69,8 +69,8 @@ func TestReplayHonorsCheckpointOffset(t *testing.T) {
 	}
 
 	// batch 2
-	if err := w.AppendInsertBatch([]model.BatchRecord{
-		{Key: model.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: model.Point{Timestamp: 2, Value: model.NewDouble(2)}},
+	if err := w.AppendInsertBatch([]tsmodel.BatchRecord{
+		{Key: tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}, Point: tsmodel.Point{Timestamp: 2, Value: tsmodel.NewDouble(2)}},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestReplayHonorsCheckpointOffset(t *testing.T) {
 	}
 
 	var n int
-	if err := Replay(dir, func(key model.SeriesKey, p model.Point) error {
+	if err := Replay(dir, func(key tsmodel.SeriesKey, p tsmodel.Point) error {
 		n++
 		if p.Timestamp != 2 {
 			t.Fatalf("expected replay from checkpoint to include only ts=2, got %d", p.Timestamp)
