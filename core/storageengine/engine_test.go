@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/wal"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func testOptions(dir string, flushAt int) Options {
@@ -80,7 +80,7 @@ func TestEngineInsertQueryReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || !got[0].Value.Equal(model.NewDouble(25.5)) || got[1].Timestamp != 200 {
+	if len(got) != 2 || !got[0].Value.Equal(tsmodel.NewDouble(25.5)) || got[1].Timestamp != 200 {
 		t.Fatalf("unexpected points: %+v", got)
 	}
 }
@@ -350,7 +350,7 @@ func TestEngineUpsertSameTimestamp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || !got[0].Value.Equal(model.NewDouble(9)) {
+	if len(got) != 1 || !got[0].Value.Equal(tsmodel.NewDouble(9)) {
 		t.Fatalf("upsert: %+v", got)
 	}
 }
@@ -363,10 +363,10 @@ func TestEngineTypedValues(t *testing.T) {
 	e := openTest(t, dir, 4096)
 	defer e.Close()
 
-	if err := e.Insert(intKey, Point{Timestamp: 1, Value: model.NewInt32(42)}); err != nil {
+	if err := e.Insert(intKey, Point{Timestamp: 1, Value: tsmodel.NewInt32(42)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Insert(textKey, Point{Timestamp: 2, Value: model.NewText("ok")}); err != nil {
+	if err := e.Insert(textKey, Point{Timestamp: 2, Value: tsmodel.NewText("ok")}); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.Close(); err != nil {
@@ -380,11 +380,11 @@ func TestEngineTypedValues(t *testing.T) {
 	defer e2.Close()
 
 	gotInt, err := e2.Query(intKey, 1, 1, 0)
-	if err != nil || len(gotInt) != 1 || !gotInt[0].Value.Equal(model.NewInt32(42)) {
+	if err != nil || len(gotInt) != 1 || !gotInt[0].Value.Equal(tsmodel.NewInt32(42)) {
 		t.Fatalf("int query: %+v err=%v", gotInt, err)
 	}
 	gotText, err := e2.Query(textKey, 2, 2, 0)
-	if err != nil || len(gotText) != 1 || !gotText[0].Value.Equal(model.NewText("ok")) {
+	if err != nil || len(gotText) != 1 || !gotText[0].Value.Equal(tsmodel.NewText("ok")) {
 		t.Fatalf("text query: %+v err=%v", gotText, err)
 	}
 }
@@ -398,7 +398,382 @@ func TestEngineDataTypeMismatch(t *testing.T) {
 	if err := e.Insert(key, DoublePoint(1, 1)); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Insert(key, Point{Timestamp: 2, Value: model.NewInt32(2)}); err == nil {
+	if err := e.Insert(key, Point{Timestamp: 2, Value: tsmodel.NewInt32(2)}); err == nil {
 		t.Fatal("expected data type mismatch")
+	}
+}
+
+func TestEngineDeleteMem(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	e := openTest(t, dir, 4096)
+	defer e.Close()
+
+	for i := int64(1); i <= 3; i++ {
+		if err := e.Insert(key, DoublePoint(i, float64(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n, err := e.DeleteRange(key, 2, 2); err != nil || n != 1 {
+		t.Fatalf("delete one: n=%d err=%v", n, err)
+	}
+	got, err := e.Query(key, 1, 3, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("after delete: %+v", got)
+	}
+}
+
+func TestEngineDeleteAfterFlush(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+	e, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	for i := int64(1); i <= 3; i++ {
+		if err := e.Insert(key, DoublePoint(i, float64(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := e.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.DeleteRange(key, 1, 3); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.Query(key, 1, 3, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("after flush delete: %+v", got)
+	}
+}
+
+func TestEngineDeleteRestart(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+
+	e1, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := int64(1); i <= 3; i++ {
+		if err := e1.Insert(key, DoublePoint(i, float64(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := e1.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e1.DeleteRange(key, 2, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	e2, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e2.Close()
+	got, err := e2.Query(key, 1, 3, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Timestamp != 1 || got[1].Timestamp != 3 {
+		t.Fatalf("after restart: %+v", got)
+	}
+}
+
+func TestEngineCount(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+	e, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	for i := int64(1); i <= 5; i++ {
+		if err := e.Insert(key, DoublePoint(i*10, float64(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := e.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	assertCount := func(start, end int64, want int) {
+		t.Helper()
+		n, err := e.Count(key, start, end)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != want {
+			t.Fatalf("count [%d,%d]=%d want %d", start, end, n, want)
+		}
+		got, err := e.Query(key, start, end, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != want {
+			t.Fatalf("query len [%d,%d]=%d want %d", start, end, len(got), want)
+		}
+	}
+
+	assertCount(10, 50, 5)
+	assertCount(20, 40, 3)
+
+	if _, err := e.DeleteRange(key, 30, 30); err != nil {
+		t.Fatal(err)
+	}
+	assertCount(10, 50, 4)
+
+	e2, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e2.Close()
+	n, err := e2.Count(key, 10, 50)
+	if err != nil || n != 4 {
+		t.Fatalf("count after restart: n=%d err=%v", n, err)
+	}
+}
+
+func TestEngineDeleteRestartAfterSecondFlush(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+
+	e1, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Insert(key, DoublePoint(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Insert(key, DoublePoint(2, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e1.DeleteRange(key, 2, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Insert(key, DoublePoint(3, 3)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Insert(key, DoublePoint(4, 4)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	e2, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e2.Close()
+
+	got, err := e2.Query(key, 1, 4, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 || got[0].Timestamp != 1 || got[1].Timestamp != 3 || got[2].Timestamp != 4 {
+		t.Fatalf("after second flush restart: %+v", got)
+	}
+}
+
+func TestEngineDeleteSealedSegmentOnly(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+
+	e, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	if err := e.Insert(key, DoublePoint(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Insert(key, DoublePoint(2, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.DeleteRange(key, 1, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := e.Query(key, 1, 2, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("sealed delete query: %+v", got)
+	}
+	n, err := e.Count(key, 1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("sealed delete count=%d", n)
+	}
+}
+
+func TestEngineDeleteCrashRecovery(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+
+	e1, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Insert(key, DoublePoint(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Insert(key, DoublePoint(2, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e1.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e1.DeleteRange(key, 2, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	e1.mu.Lock()
+	if err := e1.wal.Sync(); err != nil {
+		e1.mu.Unlock()
+		t.Fatal(err)
+	}
+	if err := e1.tombstones.Sync(); err != nil {
+		e1.mu.Unlock()
+		t.Fatal(err)
+	}
+	e1.mu.Unlock()
+
+	e2, err := OpenWithOptions(Options{DataDir: dir, FlushAt: 2, AsyncFlush: &syncFlush})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e2.Close()
+
+	got, err := e2.Query(key, 1, 2, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Timestamp != 1 {
+		t.Fatalf("crash recovery delete: %+v", got)
+	}
+}
+
+func TestEngineDeleteCompactPruneAllowsWALReset(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+
+	e, err := OpenWithOptions(Options{
+		DataDir:          dir,
+		FlushAt:          1,
+		AsyncFlush:       &syncFlush,
+		WALTruncate:      true,
+		SealAfterFlushes: 1,
+		CompactThreshold: 100,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	if err := e.Insert(key, DoublePoint(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Insert(key, DoublePoint(2, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.DeleteRange(key, 1, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Compact(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !e.tombstones.IsEmpty() {
+		t.Fatalf("expected tombstones pruned, got %+v", e.tombstones.Snapshot())
+	}
+	if sz, err := wal.FileSize(dir); err != nil {
+		t.Fatal(err)
+	} else if sz != 0 {
+		t.Fatalf("wal.log should be truncated after prune, got %d", sz)
+	}
+	got, err := e.Query(key, 1, 2, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("query after compact prune: %+v", got)
+	}
+}
+
+func TestEngineDeleteDoesNotResetWALWhileTombstoneNeeded(t *testing.T) {
+	dir := t.TempDir()
+	key := SeriesKey{DevicePath: "root.d1", Measurement: "s1"}
+	syncFlush := false
+
+	e, err := OpenWithOptions(Options{
+		DataDir:          dir,
+		FlushAt:          1,
+		AsyncFlush:       &syncFlush,
+		WALTruncate:      true,
+		SealAfterFlushes: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	if err := e.Insert(key, DoublePoint(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.DeleteRange(key, 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Insert(key, DoublePoint(2, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	if e.tombstones.IsEmpty() {
+		t.Fatal("expected tombstone to remain before compaction")
+	}
+	if sz, err := wal.FileSize(dir); err != nil {
+		t.Fatal(err)
+	} else if sz == 0 {
+		t.Fatal("wal.log should not be truncated while tombstone is still needed")
 	}
 }

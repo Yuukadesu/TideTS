@@ -5,12 +5,12 @@ import (
 	"os"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/utils"
 	"github.com/hanami/tidets/core/storageengine/utils/codec"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
-func writeFile(path string, series map[string][]model.Point) error {
+func writeFile(path string, series map[string][]tsmodel.Point) error {
 	if len(series) == 0 {
 		return commons.ErrSegmentNothingToFlush
 	}
@@ -57,7 +57,7 @@ func writeFile(path string, series map[string][]model.Point) error {
 	return f.Sync()
 }
 
-func writeChunk(f *os.File, device, measurement string, pts []model.Point) error {
+func writeChunk(f *os.File, device, measurement string, pts []tsmodel.Point) error {
 	if err := codec.WriteString(f, device); err != nil {
 		return err
 	}
@@ -83,5 +83,5 @@ func writeChunk(f *os.File, device, measurement string, pts []model.Point) error
 			return err
 		}
 	}
-	return model.WriteValuesColumn(f, dt, pts)
+	return tsmodel.WriteValuesColumn(f, dt, pts)
 }

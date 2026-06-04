@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
 	"github.com/hanami/tidets/core/storageengine/utils"
 	"github.com/hanami/tidets/core/storageengine/utils/codec"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func openFileInMemory(path string) (*file, error) {
@@ -33,7 +33,7 @@ func openFileInMemory(path string) (*file, error) {
 		return nil, commons.ErrSegmentUnsupportedVersion(ver, version)
 	}
 
-	series := make(map[string][]model.Point)
+	series := make(map[string][]tsmodel.Point)
 	if err := readBody(f, series); err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func openFileInMemory(path string) (*file, error) {
 }
 
 // readBody 读取文件体：重复 [chunkCount → chunks]，以 chunkCount=0 + endMagic 结束。
-func readBody(f *os.File, series map[string][]model.Point) error {
+func readBody(f *os.File, series map[string][]tsmodel.Point) error {
 	for {
 		var chunkCount uint32
 		err := binary.Read(f, binary.LittleEndian, &chunkCount)
@@ -72,7 +72,7 @@ func readBody(f *os.File, series map[string][]model.Point) error {
 	}
 }
 
-func readChunk(f *os.File, series map[string][]model.Point) error {
+func readChunk(f *os.File, series map[string][]tsmodel.Point) error {
 	device, err := codec.ReadString(f)
 	if err != nil {
 		return err
@@ -99,13 +99,13 @@ func readChunk(f *os.File, series map[string][]model.Point) error {
 	if err := binary.Read(f, binary.LittleEndian, &dt); err != nil {
 		return err
 	}
-	pts := make([]model.Point, n)
+	pts := make([]tsmodel.Point, n)
 	for j := uint32(0); j < n; j++ {
 		if err := binary.Read(f, binary.LittleEndian, &pts[j].Timestamp); err != nil {
 			return err
 		}
 	}
-	vals, err := model.ReadValuesColumn(f, model.DataType(dt), n)
+	vals, err := tsmodel.ReadValuesColumn(f, tsmodel.DataType(dt), n)
 	if err != nil {
 		return err
 	}
@@ -115,8 +115,8 @@ func readChunk(f *os.File, series map[string][]model.Point) error {
 	return mergeChunkSeries(series, device, measurement, pts)
 }
 
-func mergeChunkSeries(series map[string][]model.Point, device, measurement string, pts []model.Point) error {
-	key := model.SeriesKey{DevicePath: device, Measurement: measurement}
+func mergeChunkSeries(series map[string][]tsmodel.Point, device, measurement string, pts []tsmodel.Point) error {
+	key := tsmodel.SeriesKey{DevicePath: device, Measurement: measurement}
 	keyStr := key.String()
 	if existing, ok := series[keyStr]; ok {
 		series[keyStr] = utils.MergeSorted(existing, pts)

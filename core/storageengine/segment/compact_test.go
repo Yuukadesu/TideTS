@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 func TestCompactReducesFiles(t *testing.T) {
@@ -15,10 +15,10 @@ func TestCompactReducesFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key := model.SeriesKey{DevicePath: "d1", Measurement: "s1"}
+	key := tsmodel.SeriesKey{DevicePath: "d1", Measurement: "s1"}
 	for i := int64(1); i <= 3; i++ {
-		if err := mgr.Flush(map[string][]model.Point{
-			key.String(): {{Timestamp: i, Value: model.NewDouble(float64(i))}},
+		if err := mgr.Flush(map[string][]tsmodel.Point{
+			key.String(): {{Timestamp: i, Value: tsmodel.NewDouble(float64(i))}},
 		}); err != nil {
 			t.Fatal(err)
 		}

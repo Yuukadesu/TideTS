@@ -7,5 +7,6 @@ type Authenticator interface {
 
 // DefaultAuthenticator 默认认证器，供 DataNode SessionManager 使用。
 func DefaultAuthenticator() Authenticator {
-	return &Checker{}
+	c := DefaultChecker()
+	return &c
 }

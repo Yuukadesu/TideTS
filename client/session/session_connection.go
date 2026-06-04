@@ -252,13 +252,19 @@ func (c *sessionConnection) executeSQL(ctx context.Context, sql string) (*SQLRes
 	if err != nil {
 		return nil, commons.Wrap("session", commons.CodeInternal, "ExecuteSQL rpc", err)
 	}
-	out := &SQLResult{AffectedRows: int(resp.GetAffectedRows())}
+	out := &SQLResult{
+		AffectedRows: int(resp.GetAffectedRows()),
+		ColumnNames:  resp.GetColumnNames(),
+	}
 	for _, row := range resp.GetRows() {
 		val, err := convert.FromPB(row.GetValue())
 		if err != nil {
 			return nil, commons.Wrap("session", commons.CodeInternal, "sql row value", err)
 		}
 		out.Rows = append(out.Rows, Point{Timestamp: row.GetTimestamp(), Value: val})
+	}
+	for _, row := range resp.GetCatalogRows() {
+		out.CatalogRows = append(out.CatalogRows, CatalogRow{Columns: row.GetColumns()})
 	}
 	return out, nil
 }

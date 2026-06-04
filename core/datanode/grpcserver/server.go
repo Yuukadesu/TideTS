@@ -10,11 +10,15 @@ import (
 
 	"github.com/hanami/tidets/commons/errors"
 	"github.com/hanami/tidets/core/datanode/auth"
+	"github.com/hanami/tidets/core/datanode/metadata"
 	"github.com/hanami/tidets/core/datanode/session"
 	"github.com/hanami/tidets/core/datanode/sink"
+	"github.com/hanami/tidets/core/dataplane"
 	"github.com/hanami/tidets/core/queryengine"
-	querystore "github.com/hanami/tidets/core/queryengine/storage"
+	"github.com/hanami/tidets/core/queryengine/backend"
+	"github.com/hanami/tidets/core/schemaengine"
 	"github.com/hanami/tidets/core/storageengine"
+	"github.com/hanami/tidets/core/tsmodel"
 	"github.com/hanami/tidets/protocol/convert"
 	pb "github.com/hanami/tidets/protocol/grpc-datanode/pb"
 
@@ -25,22 +29,40 @@ import (
 type Server struct {
 	pb.UnimplementedDataNodeSessionServiceServer
 
-	engine *storageengine.Engine
-	sql    *queryengine.Service
-	mgr    *session.Manager
-	auth   auth.Checker
+	gateway  *dataplane.Gateway
+	schema   *schemaengine.Service
+	metadata *metadata.Manager
+	sql      *queryengine.Service
+	mgr      *session.Manager
+	auth     auth.Checker
 }
 
 // New 创建 gRPC 服务实现；engine 由调用方负责 Open/Close。
-func New(engine *storageengine.Engine) *Server {
-	store := &querystore.EngineAdapter{Engine: engine}
-	return &Server{
-		engine: engine,
-		sql:    queryengine.NewService(store),
-		mgr:    session.NewManager(auth.DefaultAuthenticator()),
-		auth:   auth.Checker{},
+func New(engine *storageengine.Engine) (*Server, error) {
+	boot, err := OpenBootstrap(engine)
+	if err != nil {
+		return nil, err
 	}
+	authChecker := auth.DefaultChecker()
+	catalog := &backend.MetadataCatalog{Meta: boot.Metadata}
+	return &Server{
+		gateway:  boot.Gateway,
+		schema:   boot.Schema,
+		metadata: boot.Metadata,
+		sql:      queryengine.NewService(engine, boot.Gateway, catalog),
+		mgr:      session.NewManager(&authChecker),
+		auth:     authChecker,
+	}, nil
 }
+
+// Schema 返回 schema 服务（DDL / 写入校验）。
+func (s *Server) Schema() *schemaengine.Service { return s.schema }
+
+// Metadata 返回元数据目录（SHOW DEVICES / SHOW TIMESERIES 等扩展用）。
+func (s *Server) Metadata() *metadata.Manager { return s.metadata }
+
+// Gateway 返回统一数据读写入口。
+func (s *Server) Gateway() *dataplane.Gateway { return s.gateway }
 
 func (s *Server) OpenSession(ctx context.Context, req *pb.OpenSessionRequest) (*pb.OpenSessionResponse, error) {
 	if req.GetUsername() == "" {
@@ -105,10 +127,11 @@ func (s *Server) InsertPoint(ctx context.Context, req *pb.InsertPointRequest) (*
 	if err != nil {
 		return nil, commons.ToGRPCStatus(err)
 	}
-	if err := s.engine.Insert(storageengine.SeriesKey{
+	key := tsmodel.SeriesKey{
 		DevicePath:  req.GetDevicePath(),
 		Measurement: req.GetMeasurement(),
-	}, storageengine.Point{
+	}
+	if err := s.gateway.Insert(key, tsmodel.Point{
 		Timestamp: req.GetTimestamp(),
 		Value:     val,
 	}); err != nil {
@@ -146,19 +169,20 @@ func (s *Server) InsertBatch(ctx context.Context, req *pb.InsertBatchRequest) (*
 		if err != nil {
 			return nil, commons.ToGRPCStatus(err)
 		}
+		key := tsmodel.SeriesKey{
+			DevicePath:  req.GetDevicePath(),
+			Measurement: pt.GetMeasurement(),
+		}
 		records = append(records, storageengine.Record{
-			Key: storageengine.SeriesKey{
-				DevicePath:  req.GetDevicePath(),
-				Measurement: pt.GetMeasurement(),
-			},
-			Point: storageengine.Point{
+			Key: key,
+			Point: tsmodel.Point{
 				Timestamp: pt.GetTimestamp(),
 				Value:     val,
 			},
 		})
 	}
 
-	if err := s.engine.InsertBatch(records); err != nil {
+	if err := s.gateway.InsertBatch(records); err != nil {
 		return nil, commons.ToGRPCStatus(commons.Wrap("grpc", commons.CodeInternal, "insert batch", err))
 	}
 	return &pb.InsertBatchResponse{Inserted: int32(len(records))}, nil
@@ -180,15 +204,8 @@ func (s *Server) QueryRange(ctx context.Context, req *pb.QueryRangeRequest) (*pb
 		return nil, commons.ToGRPCStatus(commons.ErrGRPCTimeRangeInvalid)
 	}
 
-	limit := int(req.GetLimit())
-	if limit <= 0 {
-		limit = int(info.FetchSize)
-	}
-	if limit <= 0 {
-		limit = 10000
-	}
-
-	points, err := s.engine.Query(storageengine.SeriesKey{
+	limit := queryengine.ResolveQueryLimit(int(req.GetLimit()), int(info.FetchSize))
+	res, err := s.sql.QueryRange(ctx, tsmodel.SeriesKey{
 		DevicePath:  req.GetDevicePath(),
 		Measurement: req.GetMeasurement(),
 	}, req.GetStartTime(), req.GetEndTime(), limit)
@@ -196,14 +213,14 @@ func (s *Server) QueryRange(ctx context.Context, req *pb.QueryRangeRequest) (*pb
 		return nil, commons.ToGRPCStatus(commons.Wrap("grpc", commons.CodeInternal, "query", err))
 	}
 
-	resp := &pb.QueryRangeResponse{Points: make([]*pb.PointData, 0, len(points))}
-	for _, p := range points {
-		pbVal, err := convert.ToPB(p.Value)
+	resp := &pb.QueryRangeResponse{Points: make([]*pb.PointData, 0, len(res.Rows))}
+	for _, row := range res.Rows {
+		pbVal, err := convert.ToPB(row.Value)
 		if err != nil {
 			return nil, commons.ToGRPCStatus(commons.Wrap("grpc", commons.CodeInternal, "encode value", err))
 		}
 		resp.Points = append(resp.Points, &pb.PointData{
-			Timestamp: p.Timestamp,
+			Timestamp: row.Timestamp,
 			Value:     pbVal,
 		})
 	}

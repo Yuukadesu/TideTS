@@ -107,3 +107,51 @@ func TestEngineManualCompact(t *testing.T) {
 	}
 	_ = e.Close()
 }
+
+func TestEngineCompactAfterDelete(t *testing.T) {
+	dir := t.TempDir()
+	syncFlush := false
+	key := SeriesKey{DevicePath: "root.sg1.d1", Measurement: "s1"}
+
+	e, err := OpenWithOptions(Options{
+		DataDir:          dir,
+		FlushAt:          1,
+		AsyncFlush:       &syncFlush,
+		SealAfterFlushes: 1,
+		CompactThreshold: 100,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	for i := int64(1); i <= 4; i++ {
+		if err := e.Insert(key, DoublePoint(i*10, float64(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := e.DeleteRange(key, 20, 30); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Compact(); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Compact(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := e.Query(key, 10, 40, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Timestamp != 10 || got[1].Timestamp != 40 {
+		t.Fatalf("query after delete compact: %+v", got)
+	}
+	n, err := e.Count(key, 10, 40)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("count after delete compact=%d", n)
+	}
+}

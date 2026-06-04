@@ -7,7 +7,7 @@ import (
 	"github.com/hanami/tidets/antlr/parser"
 	commons "github.com/hanami/tidets/commons/errors"
 	"github.com/hanami/tidets/core/sql/ast"
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 )
 
 // Builder 将 ANTLR 解析树转为 ast.Stmt。
@@ -32,7 +32,23 @@ func (b *Builder) VisitStatement(ctx *parser.StatementContext) interface{} {
 	if ctx.InsertStmt() != nil {
 		return b.VisitInsertStmt(ctx.InsertStmt().(*parser.InsertStmtContext))
 	}
-	return b.VisitSelectStmt(ctx.SelectStmt().(*parser.SelectStmtContext))
+	if ctx.SelectStmt() != nil {
+		return b.VisitSelectStmt(ctx.SelectStmt().(*parser.SelectStmtContext))
+	}
+	if ctx.DeleteStmt() != nil {
+		return b.VisitDeleteStmt(ctx.DeleteStmt().(*parser.DeleteStmtContext))
+	}
+	if ctx.CreateTimeseriesStmt() != nil {
+		return b.VisitCreateTimeseriesStmt(ctx.CreateTimeseriesStmt().(*parser.CreateTimeseriesStmtContext))
+	}
+	if ctx.ShowDevicesStmt() != nil {
+		return b.VisitShowDevicesStmt(ctx.ShowDevicesStmt().(*parser.ShowDevicesStmtContext))
+	}
+	if ctx.ShowTimeseriesStmt() != nil {
+		return b.VisitShowTimeseriesStmt(ctx.ShowTimeseriesStmt().(*parser.ShowTimeseriesStmtContext))
+	}
+	b.fail(commons.ErrSQLUnsupportedStmt)
+	return nil
 }
 
 func (b *Builder) VisitInsertStmt(ctx *parser.InsertStmtContext) interface{} {
@@ -47,20 +63,35 @@ func (b *Builder) VisitInsertStmt(ctx *parser.InsertStmtContext) interface{} {
 	if !ok {
 		return nil
 	}
-	ts, ok := b.visitTimestamp(ctx.Timestamp())
-	if !ok {
-		return nil
+	rows := make([]ast.InsertRow, 0, len(ctx.AllValueRow()))
+	for _, vr := range ctx.AllValueRow() {
+		row, ok := b.visitValueRow(vr.(*parser.ValueRowContext))
+		if !ok {
+			return nil
+		}
+		rows = append(rows, row)
 	}
-	val, ok := b.visitValue(ctx.Value())
-	if !ok {
+	if len(rows) == 0 {
+		b.fail(commons.ErrSQLValueRequired)
 		return nil
 	}
 	return &ast.InsertStmt{
 		DevicePath:  device,
 		Measurement: measurement,
-		Timestamp:   ts,
-		Value:       val,
+		Rows:        rows,
 	}
+}
+
+func (b *Builder) visitValueRow(ctx *parser.ValueRowContext) (ast.InsertRow, bool) {
+	ts, ok := b.visitTimestamp(ctx.Timestamp())
+	if !ok {
+		return ast.InsertRow{}, false
+	}
+	val, ok := b.visitValue(ctx.Value())
+	if !ok {
+		return ast.InsertRow{}, false
+	}
+	return ast.InsertRow{Timestamp: ts, Value: val}, true
 }
 
 func (b *Builder) VisitSelectStmt(ctx *parser.SelectStmtContext) interface{} {
@@ -79,6 +110,9 @@ func (b *Builder) VisitSelectStmt(ctx *parser.SelectStmtContext) interface{} {
 		DevicePath:  device,
 		Measurement: measurement,
 	}
+	if ctx.COUNT() != nil {
+		stmt.Aggregate = ast.SelectCount
+	}
 	if wc := ctx.WhereClause(); wc != nil {
 		preds, ok := b.visitWhereClause(wc)
 		if !ok {
@@ -94,6 +128,103 @@ func (b *Builder) VisitSelectStmt(ctx *parser.SelectStmtContext) interface{} {
 		stmt.Limit = lim
 	}
 	return stmt
+}
+
+func (b *Builder) VisitDeleteStmt(ctx *parser.DeleteStmtContext) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	device, ok := b.visitPath(ctx.Path())
+	if !ok {
+		return nil
+	}
+	measurement, ok := b.visitMeasurement(ctx.Measurement())
+	if !ok {
+		return nil
+	}
+	preds, ok := b.visitWhereClause(ctx.WhereClause())
+	if !ok || len(preds) == 0 {
+		b.fail(commons.ErrSQLWhereRequired)
+		return nil
+	}
+	return &ast.DeleteStmt{
+		DevicePath:  device,
+		Measurement: measurement,
+		TimeWhere:   preds,
+	}
+}
+
+func (b *Builder) VisitCreateTimeseriesStmt(ctx *parser.CreateTimeseriesStmtContext) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	device, ok := b.visitPath(ctx.Path())
+	if !ok {
+		return nil
+	}
+	measurement, ok := b.visitMeasurement(ctx.Measurement())
+	if !ok {
+		return nil
+	}
+	dt, ok := b.visitDataTypeName(ctx.DataTypeName())
+	if !ok {
+		return nil
+	}
+	return &ast.CreateTimeseriesStmt{
+		DevicePath:  device,
+		Measurement: measurement,
+		DataType:    dt,
+	}
+}
+
+func (b *Builder) VisitShowDevicesStmt(ctx *parser.ShowDevicesStmtContext) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	stmt := &ast.ShowDevicesStmt{}
+	if sp := ctx.ShowPattern(); sp != nil {
+		pattern, ok := b.visitShowPattern(sp.(*parser.ShowPatternContext))
+		if !ok {
+			return nil
+		}
+		stmt.Pattern = pattern
+	}
+	return stmt
+}
+
+func (b *Builder) VisitShowTimeseriesStmt(ctx *parser.ShowTimeseriesStmtContext) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	device, ok := b.visitPath(ctx.Path())
+	if !ok {
+		return nil
+	}
+	return &ast.ShowTimeseriesStmt{DevicePath: device}
+}
+
+func (b *Builder) visitShowPattern(ctx *parser.ShowPatternContext) (string, bool) {
+	path, ok := b.visitPath(ctx.Path())
+	if !ok {
+		return "", false
+	}
+	if ctx.DOT() != nil && len(ctx.AllSTAR()) == 2 {
+		return path + ".**", true
+	}
+	return path, true
+}
+
+func (b *Builder) visitDataTypeName(ctx parser.IDataTypeNameContext) (tsmodel.DataType, bool) {
+	if ctx == nil || ctx.IDENTIFIER() == nil {
+		b.fail(commons.ErrSQLDataTypeInvalid)
+		return tsmodel.DataTypeUnknown, false
+	}
+	dt, err := tsmodel.ParseDataType(ctx.IDENTIFIER().GetText())
+	if err != nil {
+		b.fail(err)
+		return tsmodel.DataTypeUnknown, false
+	}
+	return dt, true
 }
 
 func (b *Builder) visitWhereClause(ctx parser.IWhereClauseContext) ([]ast.TimePredicate, bool) {
@@ -197,39 +328,39 @@ func (b *Builder) visitTimestamp(ctx parser.ITimestampContext) (int64, bool) {
 	return ts, true
 }
 
-func (b *Builder) visitValue(ctx parser.IValueContext) (model.Value, bool) {
+func (b *Builder) visitValue(ctx parser.IValueContext) (tsmodel.Value, bool) {
 	if ctx == nil {
 		b.fail(commons.ErrSQLValueRequired)
-		return model.Value{}, false
+		return tsmodel.Value{}, false
 	}
 	switch {
 	case ctx.BOOLEAN() != nil:
 		text := strings.ToLower(ctx.BOOLEAN().GetText())
-		return model.NewBoolean(text == "true"), true
+		return tsmodel.NewBoolean(text == "true"), true
 	case ctx.FLOAT() != nil:
 		f, err := strconv.ParseFloat(ctx.FLOAT().GetText(), 64)
 		if err != nil {
 			b.fail(commons.Wrap("sql", commons.CodeInvalidArgument, "float literal", err))
-			return model.Value{}, false
+			return tsmodel.Value{}, false
 		}
-		return model.NewDouble(f), true
+		return tsmodel.NewDouble(f), true
 	case ctx.STRING() != nil:
 		s, err := unquoteString(ctx.STRING().GetText())
 		if err != nil {
 			b.fail(err)
-			return model.Value{}, false
+			return tsmodel.Value{}, false
 		}
-		return model.NewText(s), true
+		return tsmodel.NewText(s), true
 	case ctx.INTEGER() != nil:
 		n, err := parseInteger(ctx.INTEGER().GetText())
 		if err != nil {
 			b.fail(err)
-			return model.Value{}, false
+			return tsmodel.Value{}, false
 		}
-		return model.NewInt64(n), true
+		return tsmodel.NewInt64(n), true
 	default:
 		b.fail(commons.ErrSQLValueRequired)
-		return model.Value{}, false
+		return tsmodel.Value{}, false
 	}
 }
 

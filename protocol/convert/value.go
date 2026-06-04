@@ -1,97 +1,97 @@
-// Package convert 在 gRPC TSValue 与存储层 model.Value 之间转换（客户端与服务端共用）。
+// Package convert 在 gRPC TSValue 与 tsmodel.Value 之间转换（客户端与服务端共用）。
 package convert
 
 import (
 	"fmt"
 
 	"github.com/hanami/tidets/commons/errors"
-	"github.com/hanami/tidets/core/storageengine/model"
+	"github.com/hanami/tidets/core/tsmodel"
 	pb "github.com/hanami/tidets/protocol/grpc-datanode/pb"
 )
 
 // FromPB 将 RPC 值转为存储层 Value。
-func FromPB(v *pb.TSValue) (model.Value, error) {
+func FromPB(v *pb.TSValue) (tsmodel.Value, error) {
 	if v == nil {
-		return model.Value{}, commons.ErrValueRequired
+		return tsmodel.Value{}, commons.ErrValueRequired
 	}
 	switch v.GetDataType() {
 	case pb.TSDataType_TS_DATA_TYPE_BOOLEAN:
 		b, ok := v.GetValue().(*pb.TSValue_BoolValue)
 		if !ok {
-			return model.Value{}, commons.ErrValueBoolRequired
+			return tsmodel.Value{}, commons.ErrValueBoolRequired
 		}
-		return model.NewBoolean(b.BoolValue), nil
+		return tsmodel.NewBoolean(b.BoolValue), nil
 	case pb.TSDataType_TS_DATA_TYPE_INT32:
 		x, ok := v.GetValue().(*pb.TSValue_Int32Value)
 		if !ok {
-			return model.Value{}, commons.ErrValueInt32Required
+			return tsmodel.Value{}, commons.ErrValueInt32Required
 		}
-		return model.NewInt32(x.Int32Value), nil
+		return tsmodel.NewInt32(x.Int32Value), nil
 	case pb.TSDataType_TS_DATA_TYPE_INT64:
 		x, ok := v.GetValue().(*pb.TSValue_Int64Value)
 		if !ok {
-			return model.Value{}, commons.ErrValueInt64Required
+			return tsmodel.Value{}, commons.ErrValueInt64Required
 		}
-		return model.NewInt64(x.Int64Value), nil
+		return tsmodel.NewInt64(x.Int64Value), nil
 	case pb.TSDataType_TS_DATA_TYPE_FLOAT:
 		x, ok := v.GetValue().(*pb.TSValue_FloatValue)
 		if !ok {
-			return model.Value{}, commons.ErrValueFloatRequired
+			return tsmodel.Value{}, commons.ErrValueFloatRequired
 		}
-		return model.NewFloat(x.FloatValue), nil
+		return tsmodel.NewFloat(x.FloatValue), nil
 	case pb.TSDataType_TS_DATA_TYPE_DOUBLE:
 		x, ok := v.GetValue().(*pb.TSValue_DoubleValue)
 		if !ok {
-			return model.Value{}, commons.ErrValueDoubleRequired
+			return tsmodel.Value{}, commons.ErrValueDoubleRequired
 		}
-		return model.NewDouble(x.DoubleValue), nil
+		return tsmodel.NewDouble(x.DoubleValue), nil
 	case pb.TSDataType_TS_DATA_TYPE_TEXT:
 		x, ok := v.GetValue().(*pb.TSValue_TextValue)
 		if !ok {
-			return model.Value{}, commons.ErrValueTextRequired
+			return tsmodel.Value{}, commons.ErrValueTextRequired
 		}
-		return model.NewText(x.TextValue), nil
+		return tsmodel.NewText(x.TextValue), nil
 	default:
-		return model.Value{}, commons.ErrValueUnsupportedDataType(v.GetDataType())
+		return tsmodel.Value{}, commons.ErrValueUnsupportedDataType(v.GetDataType())
 	}
 }
 
 // ToPB 将存储层 Value 转为 RPC 值。
-func ToPB(v model.Value) (*pb.TSValue, error) {
+func ToPB(v tsmodel.Value) (*pb.TSValue, error) {
 	if err := v.Validate(); err != nil {
 		return nil, fmt.Errorf("convert: %w", err)
 	}
 	out := &pb.TSValue{DataType: dataTypeToPB(v.Type)}
 	switch v.Type {
-	case model.DataTypeBoolean:
+	case tsmodel.DataTypeBoolean:
 		out.Value = &pb.TSValue_BoolValue{BoolValue: v.Boolean}
-	case model.DataTypeInt32:
+	case tsmodel.DataTypeInt32:
 		out.Value = &pb.TSValue_Int32Value{Int32Value: v.Int32}
-	case model.DataTypeInt64:
+	case tsmodel.DataTypeInt64:
 		out.Value = &pb.TSValue_Int64Value{Int64Value: v.Int64}
-	case model.DataTypeFloat:
+	case tsmodel.DataTypeFloat:
 		out.Value = &pb.TSValue_FloatValue{FloatValue: v.Float}
-	case model.DataTypeDouble:
+	case tsmodel.DataTypeDouble:
 		out.Value = &pb.TSValue_DoubleValue{DoubleValue: v.Double}
-	case model.DataTypeText:
+	case tsmodel.DataTypeText:
 		out.Value = &pb.TSValue_TextValue{TextValue: v.Text}
 	}
 	return out, nil
 }
 
-func dataTypeToPB(dt model.DataType) pb.TSDataType {
+func dataTypeToPB(dt tsmodel.DataType) pb.TSDataType {
 	switch dt {
-	case model.DataTypeBoolean:
+	case tsmodel.DataTypeBoolean:
 		return pb.TSDataType_TS_DATA_TYPE_BOOLEAN
-	case model.DataTypeInt32:
+	case tsmodel.DataTypeInt32:
 		return pb.TSDataType_TS_DATA_TYPE_INT32
-	case model.DataTypeInt64:
+	case tsmodel.DataTypeInt64:
 		return pb.TSDataType_TS_DATA_TYPE_INT64
-	case model.DataTypeFloat:
+	case tsmodel.DataTypeFloat:
 		return pb.TSDataType_TS_DATA_TYPE_FLOAT
-	case model.DataTypeDouble:
+	case tsmodel.DataTypeDouble:
 		return pb.TSDataType_TS_DATA_TYPE_DOUBLE
-	case model.DataTypeText:
+	case tsmodel.DataTypeText:
 		return pb.TSDataType_TS_DATA_TYPE_TEXT
 	default:
 		return pb.TSDataType_TS_DATA_TYPE_UNSPECIFIED

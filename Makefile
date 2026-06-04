@@ -28,8 +28,7 @@ proto:
 		-I $(PROTO_DIR) \
 		--go_out=$(PB_DIR) --go_opt=paths=source_relative \
 		--go-grpc_out=$(PB_DIR) --go-grpc_opt=paths=source_relative \
-		$(PROTO_DIR)/client.proto \
-		$(PROTO_DIR)/server.proto
+		$(PROTO_DIR)/client.proto
 
 .PHONY: test
 test:
