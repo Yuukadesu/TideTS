@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hanami/tidets/commons/errors"
 	"github.com/hanami/tidets/core/datanode/auth"
@@ -16,6 +17,7 @@ import (
 	"github.com/hanami/tidets/core/dataplane"
 	"github.com/hanami/tidets/core/queryengine"
 	"github.com/hanami/tidets/core/queryengine/backend"
+	"github.com/hanami/tidets/core/queryengine/plan"
 	"github.com/hanami/tidets/core/schemaengine"
 	"github.com/hanami/tidets/core/storageengine"
 	"github.com/hanami/tidets/core/tsmodel"
@@ -35,6 +37,7 @@ type Server struct {
 	sql      *queryengine.Service
 	mgr      *session.Manager
 	auth     auth.Checker
+	hooks    Hooks
 }
 
 // New 创建 gRPC 服务实现；engine 由调用方负责 Open/Close。
@@ -63,6 +66,12 @@ func (s *Server) Metadata() *metadata.Manager { return s.metadata }
 
 // Gateway 返回统一数据读写入口。
 func (s *Server) Gateway() *dataplane.Gateway { return s.gateway }
+
+// SQLService 返回 SQL 服务，供外层注入 hooks。
+func (s *Server) SQLService() *queryengine.Service { return s.sql }
+
+// SessionManager 返回会话管理器，供外层暴露活跃会话等 metrics。
+func (s *Server) SessionManager() *session.Manager { return s.mgr }
 
 func (s *Server) OpenSession(ctx context.Context, req *pb.OpenSessionRequest) (*pb.OpenSessionResponse, error) {
 	if req.GetUsername() == "" {
@@ -137,6 +146,9 @@ func (s *Server) InsertPoint(ctx context.Context, req *pb.InsertPointRequest) (*
 	}); err != nil {
 		return nil, commons.ToGRPCStatus(commons.Wrap("grpc", commons.CodeInternal, "insert", err))
 	}
+	if s.hooks.OnRPCItems != nil {
+		s.hooks.OnRPCItems("InsertPoint", 1, 0)
+	}
 	return &pb.InsertPointResponse{}, nil
 }
 
@@ -185,6 +197,9 @@ func (s *Server) InsertBatch(ctx context.Context, req *pb.InsertBatchRequest) (*
 	if err := s.gateway.InsertBatch(records); err != nil {
 		return nil, commons.ToGRPCStatus(commons.Wrap("grpc", commons.CodeInternal, "insert batch", err))
 	}
+	if s.hooks.OnRPCItems != nil {
+		s.hooks.OnRPCItems("InsertBatch", len(records), int(len(records)))
+	}
 	return &pb.InsertBatchResponse{Inserted: int32(len(records))}, nil
 }
 
@@ -224,21 +239,27 @@ func (s *Server) QueryRange(ctx context.Context, req *pb.QueryRangeRequest) (*pb
 			Value:     pbVal,
 		})
 	}
+	if s.hooks.OnRPCItems != nil {
+		s.hooks.OnRPCItems("QueryRange", 1, len(resp.Points))
+	}
 	return resp, nil
 }
 
 func (s *Server) ExecuteSQL(ctx context.Context, req *pb.ExecuteSQLRequest) (*pb.ExecuteSQLResponse, error) {
+	begin := time.Now()
 	sess, err := s.requireSession(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
 	sqlText := strings.TrimSpace(req.GetSql())
 	if sqlText == "" {
+		s.observeSQLFailure(plan.Kind(-1), "parse", begin)
 		return nil, commons.ToGRPCStatus(commons.ErrSQLTextEmpty)
 	}
 
 	p, err := queryengine.Plan(sqlText)
 	if err != nil {
+		s.observeSQLFailure(plan.Kind(-1), "parse", begin)
 		return nil, commons.ToGRPCStatus(err)
 	}
 	info := sess.SessionInfo()
@@ -247,6 +268,7 @@ func (s *Server) ExecuteSQL(ctx context.Context, req *pb.ExecuteSQLRequest) (*pb
 		priv = auth.PrivilegeWrite
 	}
 	if err := s.auth.CheckPrivilege(info.User.UserID, info.User.Username, p.DevicePath(), priv); err != nil {
+		s.observeSQLFailure(p.Kind, "auth", begin)
 		return nil, commons.ToGRPCStatus(err)
 	}
 
@@ -254,7 +276,14 @@ func (s *Server) ExecuteSQL(ctx context.Context, req *pb.ExecuteSQLRequest) (*pb
 	if err != nil {
 		return nil, commons.ToGRPCStatus(commons.Wrap("grpc", commons.CodeInternal, "execute sql", err))
 	}
-	return sink.SQLToExecuteResponse(res)
+	resp, err := sink.SQLToExecuteResponse(res)
+	if err != nil {
+		return nil, err
+	}
+	if s.hooks.OnRPCItems != nil {
+		s.hooks.OnRPCItems("ExecuteSQL", 1, sqlResponseItems(resp))
+	}
+	return resp, nil
 }
 
 func (s *Server) requireSession(ctx context.Context, sessionID int64) (session.IClientSession, error) {
@@ -285,4 +314,26 @@ func peerHostPort(ctx context.Context) (host string, port int) {
 	}
 	port, _ = strconv.Atoi(ps)
 	return host, port
+}
+
+func (s *Server) observeSQLFailure(kind plan.Kind, errorClass string, begin time.Time) {
+	if s.hooks.OnSQL != nil {
+		s.hooks.OnSQL(kind, false, errorClass, time.Since(begin))
+	}
+}
+
+func sqlResponseItems(resp *pb.ExecuteSQLResponse) int {
+	if resp == nil {
+		return 0
+	}
+	if len(resp.Rows) > 0 {
+		return len(resp.Rows)
+	}
+	if len(resp.CatalogRows) > 0 {
+		return len(resp.CatalogRows)
+	}
+	if resp.GetAffectedRows() > 0 {
+		return int(resp.GetAffectedRows())
+	}
+	return 0
 }

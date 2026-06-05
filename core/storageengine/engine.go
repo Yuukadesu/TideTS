@@ -21,6 +21,7 @@ type Engine struct {
 	asyncFlush bool
 	walSync    wal.SyncMode
 	walTrunc   bool
+	hooks      Hooks
 	schemaHas  func(SeriesKey) bool
 	mu         sync.RWMutex
 	ws         *workingSet
@@ -143,7 +144,7 @@ func OpenWithOptions(opts Options) (*Engine, error) {
 }
 
 func (e *Engine) Insert(key SeriesKey, p Point) error {
-	return e.InsertBatch([]Record{{Key: key, Point: p}})
+	return e.insertRecords("insert", []Record{{Key: key, Point: p}})
 }
 
 // BindSchemaGuard 绑定 schema 守卫；绑定后裸写必须先有 catalog。
@@ -161,9 +162,14 @@ type Record struct {
 
 // InsertBatch 批量写入。
 func (e *Engine) InsertBatch(records []Record) error {
+	return e.insertRecords("insert_batch", records)
+}
+
+func (e *Engine) insertRecords(op string, records []Record) error {
 	if len(records) == 0 {
 		return nil
 	}
+	start := time.Now()
 	batch := make([]tsmodel.BatchRecord, 0, len(records))
 	for _, rec := range records {
 		if err := utils.ValidatePoint(rec.Key, rec.Point); err != nil {
@@ -184,13 +190,21 @@ func (e *Engine) InsertBatch(records []Record) error {
 	if err := e.wal.AppendInsertBatch(batch); err != nil {
 		return err
 	}
+	if e.hooks.OnWAL != nil {
+		e.hooks.OnWAL("append_"+op, len(batch))
+	}
 	for _, rec := range records {
 		if err := e.ws.Insert(rec.Key, rec.Point); err != nil {
 			return err
 		}
 	}
 	if e.ws.PointCount() >= e.flushAt {
-		return e.scheduleFlushWhileLocked()
+		if err := e.scheduleFlushWhileLocked(); err != nil {
+			return err
+		}
+	}
+	if e.hooks.OnWrite != nil {
+		e.hooks.OnWrite(op, len(records), time.Since(start))
 	}
 	return nil
 }
@@ -246,10 +260,12 @@ func (e *Engine) scheduleFlushWhileLocked() error {
 }
 
 // Compact 手动触发 segment 压缩（合并最老的若干 .seg）。
-func (e *Engine) Compact() error {
+func (e *Engine) Compact() (err error) {
+	start := time.Now()
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if err := e.segments.CompactWithFilter(e.tombstoneFilter()); err != nil {
+	stats, err := e.segments.CompactWithStats(e.tombstoneFilter())
+	if err != nil {
 		return err
 	}
 	if err := e.pruneTombstonesLocked(); err != nil {
@@ -261,14 +277,24 @@ func (e *Engine) Compact() error {
 		}
 	}
 	e.tryWALResetLocked()
+	if e.hooks.OnCompact != nil && stats.InputFiles > 0 {
+		e.hooks.OnCompact(time.Since(start), stats.InputFiles, stats.OutputFiles)
+	}
 	return nil
 }
 
 func (e *Engine) doFlushAndFinalize(job pendingFlush) error {
-	if err := e.segments.Flush(job.snap); err != nil {
+	start := time.Now()
+	flushPoints := pointsInSeries(job.snap)
+	compactStats, err := e.segments.FlushWithStats(job.snap)
+	if err != nil {
 		return err
 	}
-	if err := e.segments.MaybeCompactWithFilter(e.tombstoneFilter()); err != nil {
+	if err := e.observeCompactLocked(start, compactStats); err != nil {
+		return err
+	}
+	maybeCompactStats, err := e.segments.MaybeCompactWithStats(e.tombstoneFilter())
+	if err != nil {
 		return err
 	}
 	e.mu.Lock()
@@ -294,6 +320,12 @@ func (e *Engine) doFlushAndFinalize(job pendingFlush) error {
 	}
 	_ = wal.WriteCheckpoint(e.dir, e.checkpointOffsetLocked(job.walOffset))
 	e.tryWALResetLocked()
+	if e.hooks.OnFlush != nil {
+		e.hooks.OnFlush(flushPoints, time.Since(start))
+	}
+	if e.hooks.OnCompact != nil && maybeCompactStats.InputFiles > 0 {
+		e.hooks.OnCompact(time.Since(start), maybeCompactStats.InputFiles, maybeCompactStats.OutputFiles)
+	}
 	return nil
 }
 
@@ -323,6 +355,7 @@ func (e *Engine) pruneTombstonesLocked() error {
 	}
 	snapshot := e.tombstones.Snapshot()
 	drop := make(map[string]map[timeRange]struct{})
+	dropCount := 0
 	for keyStr, ranges := range snapshot {
 		device, measurement := tsmodel.SplitSeriesKey(keyStr)
 		if measurement == "" {
@@ -337,9 +370,16 @@ func (e *Engine) pruneTombstonesLocked() error {
 				drop[keyStr] = make(map[timeRange]struct{})
 			}
 			drop[keyStr][r] = struct{}{}
+			dropCount++
 		}
 	}
-	return e.tombstones.Prune(drop)
+	if err := e.tombstones.Prune(drop); err != nil {
+		return err
+	}
+	if dropCount > 0 && e.hooks.OnTombstone != nil {
+		e.hooks.OnTombstone("prune", dropCount)
+	}
+	return nil
 }
 
 func (e *Engine) hasRawPointsLocked(key SeriesKey, start, end int64) bool {
@@ -370,6 +410,9 @@ func (e *Engine) tryWALResetLocked() {
 			if e.walSync == wal.SyncOnFlush {
 				_ = e.wal.Sync()
 			}
+			if e.hooks.OnWAL != nil {
+				e.hooks.OnWAL("truncate", 1)
+			}
 			return
 		}
 	}
@@ -384,6 +427,9 @@ func (e *Engine) tryWALResetLocked() {
 	e.wal = w
 	if e.walSync == wal.SyncOnFlush {
 		_ = e.wal.Sync()
+	}
+	if e.hooks.OnWAL != nil {
+		e.hooks.OnWAL("reset", 1)
 	}
 }
 
@@ -461,4 +507,19 @@ func (e *Engine) PendingFlushBatches() int {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return len(e.pending)
+}
+
+func (e *Engine) observeCompactLocked(start time.Time, stats segment.CompactStats) error {
+	if e.hooks.OnCompact != nil && stats.InputFiles > 0 {
+		e.hooks.OnCompact(time.Since(start), stats.InputFiles, stats.OutputFiles)
+	}
+	return nil
+}
+
+func pointsInSeries(series map[string][]tsmodel.Point) int {
+	total := 0
+	for _, pts := range series {
+		total += len(pts)
+	}
+	return total
 }

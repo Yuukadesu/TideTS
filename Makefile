@@ -48,3 +48,9 @@ build:
 build-cli:
 	@mkdir -p bin
 	go build -o bin/tidets-cli ./cmd/tidets-cli
+
+.PHONY: bench-help
+bench-help:
+	@echo 'Start DataNode first, then run one of:'
+	@echo '  go run ./scripts/bench -op insert_batch -points 10000 -batch-size 100 -concurrency 4'
+	@echo '  ./scripts/run_bench.sh insert_batch'

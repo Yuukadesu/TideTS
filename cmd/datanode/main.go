@@ -2,15 +2,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/hanami/tidets/core/datanode/grpcserver"
+	"github.com/hanami/tidets/core/metrics"
+	"github.com/hanami/tidets/core/queryengine"
 	"github.com/hanami/tidets/core/storageengine"
 	"github.com/hanami/tidets/core/storageengine/wal"
 	pb "github.com/hanami/tidets/protocol/grpc-datanode/pb"
@@ -22,6 +27,7 @@ const defaultListenAddr = ":5556"
 
 func main() {
 	addr := flag.String("addr", defaultListenAddr, "gRPC listen address")
+	metricsAddr := flag.String("metrics-addr", ":9090", "metrics HTTP listen address (empty to disable)")
 	dataDir := flag.String("data-dir", "./data", "storage data directory")
 	flushAt := flag.Int("flush-at", 0, "flush memtable to segment when point count reaches this (0 = default)")
 	asyncFlush := flag.Bool("async-flush", true, "enable async flush worker")
@@ -67,17 +73,43 @@ func main() {
 		log.Fatalf("listen %s: %v", *addr, err)
 	}
 
-	grpcServer := grpc.NewServer()
 	srv, err := grpcserver.New(engine)
 	if err != nil {
 		log.Fatalf("open catalog: %v", err)
+	}
+
+	var (
+		reg        *metrics.Registry
+		grpcServer *grpc.Server
+		metricsSrv *http.Server
+	)
+	if *metricsAddr != "" {
+		reg = metrics.NewRegistry()
+		reg.RegisterStorageCollector(engine)
+		reg.RegisterSessionCollector(srv.SessionManager().ActiveCount)
+		engine.SetHooks(reg.StorageHooks())
+		srv.SQLService().SetHooks(queryengine.Hooks{OnPlanExecuted: reg.ObserveSQL})
+		srv.SetHooks(grpcserver.Hooks{
+			OnSQL:      reg.ObserveSQL,
+			OnRPCItems: reg.ObserveRPCItems,
+		})
+		grpcServer = grpc.NewServer(grpc.UnaryInterceptor(reg.UnaryServerInterceptor()))
+		metricsSrv = metrics.NewHTTPServer(*metricsAddr, reg)
+		go func() {
+			log.Printf("TideTS metrics listening on %s", *metricsAddr)
+			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("metrics serve: %v", err)
+			}
+		}()
+	} else {
+		grpcServer = grpc.NewServer()
 	}
 	pb.RegisterDataNodeSessionServiceServer(grpcServer, srv)
 
 	go func() {
 		log.Printf(
-			"TideTS DataNode listening on %s, data-dir=%s, flush-at=%d, async-flush=%v, wal-sync=%s, wal-truncate=%v",
-			*addr, *dataDir, *flushAt, *asyncFlush, *walSync, *walTruncate,
+			"TideTS DataNode listening on %s, data-dir=%s, flush-at=%d, async-flush=%v, wal-sync=%s, wal-truncate=%v, metrics-addr=%s",
+			*addr, *dataDir, *flushAt, *asyncFlush, *walSync, *walTruncate, *metricsAddr,
 		)
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("serve: %v", err)
@@ -90,5 +122,12 @@ func main() {
 
 	log.Println("shutting down...")
 	grpcServer.GracefulStop()
+	if metricsSrv != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := metricsSrv.Shutdown(ctx); err != nil {
+			log.Printf("shutdown metrics: %v", err)
+		}
+	}
 	fmt.Println("bye")
 }

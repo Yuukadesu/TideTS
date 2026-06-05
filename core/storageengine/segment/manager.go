@@ -91,24 +91,30 @@ func OpenManagerWithCompact(dataDir string, sealAfter int, compact CompactOption
 }
 
 func (mgr *Manager) Flush(series map[string][]tsmodel.Point) error {
+	_, err := mgr.FlushWithStats(series)
+	return err
+}
+
+// FlushWithStats 将内存快照追加到 active.seg，并返回期间自动 compact 的统计信息。
+func (mgr *Manager) FlushWithStats(series map[string][]tsmodel.Point) (CompactStats, error) {
 	if len(series) == 0 {
-		return nil
+		return CompactStats{}, nil
 	}
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
 	if err := mgr.appendToActive(series); err != nil {
-		return err
+		return CompactStats{}, err
 	}
 	if mgr.activeFlushes >= mgr.sealAfter {
 		if err := mgr.sealActiveLocked(); err != nil {
-			return err
+			return CompactStats{}, err
 		}
 		if len(mgr.segments) >= mgr.compactThreshold {
 			return mgr.compactLocked(nil)
 		}
 	}
-	return nil
+	return CompactStats{}, nil
 }
 
 func (mgr *Manager) Query(key tsmodel.SeriesKey, start, end int64) []tsmodel.Point {

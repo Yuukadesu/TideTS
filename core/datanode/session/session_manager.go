@@ -148,9 +148,14 @@ func (m *Manager) SessionInfo(sessionID int64) (SessionInfo, bool) {
 	return sess.SessionInfo(), true
 }
 
-// Count 当前活跃会话数。
-func (m *Manager) Count() int {
+// ActiveCount 当前活跃会话数。
+func (m *Manager) ActiveCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.sessions)
+}
+
+// Count 当前活跃会话数。
+func (m *Manager) Count() int {
+	return m.ActiveCount()
 }

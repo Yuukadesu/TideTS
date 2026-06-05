@@ -2,7 +2,9 @@ package queryengine
 
 import (
 	"context"
+	"time"
 
+	commons "github.com/hanami/tidets/commons/errors"
 	"github.com/hanami/tidets/core/dataplane"
 	"github.com/hanami/tidets/core/queryengine/backend"
 	"github.com/hanami/tidets/core/queryengine/executor"
@@ -15,7 +17,8 @@ import (
 
 // Service 解析 SQL → 计划 → 执行（INSERT / SELECT）。
 type Service struct {
-	exec *executor.Executor
+	exec  *executor.Executor
+	hooks Hooks
 }
 
 // NewService 创建 SQL 查询服务。
@@ -50,16 +53,25 @@ func Plan(sqlText string) (plan.Plan, error) {
 
 // Execute 执行一条 SQL。
 func (s *Service) Execute(ctx context.Context, sqlText string) (*result.Result, error) {
+	start := time.Now()
 	p, err := Plan(sqlText)
 	if err != nil {
+		if s.hooks.OnPlanExecuted != nil {
+			s.hooks.OnPlanExecuted(plan.Kind(-1), false, "parse", time.Since(start))
+		}
 		return nil, err
 	}
-	return s.exec.Execute(ctx, p)
+	return s.ExecutePlan(ctx, p)
 }
 
 // ExecutePlan 执行已有计划。
 func (s *Service) ExecutePlan(ctx context.Context, p plan.Plan) (*result.Result, error) {
-	return s.exec.Execute(ctx, p)
+	start := time.Now()
+	res, err := s.exec.Execute(ctx, p)
+	if s.hooks.OnPlanExecuted != nil {
+		s.hooks.OnPlanExecuted(p.Kind, err == nil, classifyExecuteError(err), time.Since(start))
+	}
+	return res, err
 }
 
 // QueryRange 统一范围查询入口，供非 SQL RPC 复用 queryengine。
@@ -85,4 +97,24 @@ func ResolveQueryLimit(requestLimit, sessionFetchSize int) int {
 		limit = executor.DefaultQueryLimit
 	}
 	return limit
+}
+
+// SetHooks 设置 SQL 观测 hooks。
+func (s *Service) SetHooks(h Hooks) {
+	s.hooks = h
+}
+
+func classifyExecuteError(err error) string {
+	if err == nil {
+		return "none"
+	}
+	if e, ok := commons.As(err); ok {
+		switch e.Code {
+		case commons.CodeUnknown, commons.CodeCorrupt, commons.CodeInternal:
+			return "internal"
+		default:
+			return "execute"
+		}
+	}
+	return "internal"
 }
