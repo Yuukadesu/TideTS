@@ -4,6 +4,8 @@ bin/
 *.test
 *.out
 
+bench-results/
+
 # 运行时数据（WAL、.seg）
 data/
 

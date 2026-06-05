@@ -18,6 +18,12 @@ type CompactOptions struct {
 	MergeCount int
 }
 
+// CompactStats 描述一次 compact 的输入输出文件数。
+type CompactStats struct {
+	InputFiles  int
+	OutputFiles int
+}
+
 func (o CompactOptions) withDefaults() CompactOptions {
 	if o.Threshold <= 0 {
 		o.Threshold = DefaultCompactThreshold
@@ -37,10 +43,16 @@ func (mgr *Manager) MaybeCompact() error {
 }
 
 func (mgr *Manager) MaybeCompactWithFilter(filter func(string, []tsmodel.Point) []tsmodel.Point) error {
+	_, err := mgr.MaybeCompactWithStats(filter)
+	return err
+}
+
+// MaybeCompactWithStats 在达到阈值时 compact，并返回输入输出文件统计。
+func (mgr *Manager) MaybeCompactWithStats(filter func(string, []tsmodel.Point) []tsmodel.Point) (CompactStats, error) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	if len(mgr.segments) < mgr.compactThreshold {
-		return nil
+		return CompactStats{}, nil
 	}
 	return mgr.compactLocked(filter)
 }
@@ -52,18 +64,24 @@ func (mgr *Manager) Compact() error {
 
 // CompactWithFilter 压缩并在合并时应用 tombstone 过滤。
 func (mgr *Manager) CompactWithFilter(filter func(string, []tsmodel.Point) []tsmodel.Point) error {
+	_, err := mgr.CompactWithStats(filter)
+	return err
+}
+
+// CompactWithStats 手动压缩并返回输入输出文件统计。
+func (mgr *Manager) CompactWithStats(filter func(string, []tsmodel.Point) []tsmodel.Point) (CompactStats, error) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	if len(mgr.segments) < 2 {
-		return nil
+		return CompactStats{}, nil
 	}
 	return mgr.compactLocked(filter)
 }
 
-func (mgr *Manager) compactLocked(filter func(string, []tsmodel.Point) []tsmodel.Point) error {
+func (mgr *Manager) compactLocked(filter func(string, []tsmodel.Point) []tsmodel.Point) (CompactStats, error) {
 	n := len(mgr.segments)
 	if n < 2 {
-		return nil
+		return CompactStats{}, nil
 	}
 	mergeN := mgr.compactMerge
 	if mergeN > n {
@@ -80,21 +98,21 @@ func (mgr *Manager) compactLocked(filter func(string, []tsmodel.Point) []tsmodel
 	rest := mgr.segments[mergeN:]
 	if len(merged) == 0 {
 		mgr.segments = rest
-		return nil
+		return CompactStats{InputFiles: len(toMerge), OutputFiles: 0}, nil
 	}
 
 	mgr.nextID++
 	path := filepath.Join(mgr.dir, fmt.Sprintf("%06d.seg", mgr.nextID))
 	if err := writeFile(path, merged); err != nil {
-		return commons.Wrap("segment", commons.CodeCorrupt, "compact write", err)
+		return CompactStats{}, commons.Wrap("segment", commons.CodeCorrupt, "compact write", err)
 	}
 	sf, err := openFile(path)
 	if err != nil {
 		_ = os.Remove(path)
-		return commons.Wrap("segment", commons.CodeCorrupt, "compact open", err)
+		return CompactStats{}, commons.Wrap("segment", commons.CodeCorrupt, "compact open", err)
 	}
 	mgr.segments = append([]*file{sf}, rest...)
-	return nil
+	return CompactStats{InputFiles: len(toMerge), OutputFiles: 1}, nil
 }
 
 func mergeFileSeries(files []*file, filter func(string, []tsmodel.Point) []tsmodel.Point) map[string][]tsmodel.Point {
