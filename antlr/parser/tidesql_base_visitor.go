@@ -39,6 +39,34 @@ func (v *BaseTideSQLVisitor) VisitShowTimeseriesStmt(ctx *ShowTimeseriesStmtCont
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseTideSQLVisitor) VisitCreateUserStmt(ctx *CreateUserStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitAlterUserStmt(ctx *AlterUserStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitGrantStmt(ctx *GrantStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitRevokeStmt(ctx *RevokeStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitPrivList(ctx *PrivListContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitPriv(ctx *PrivContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseTideSQLVisitor) VisitGrantPath(ctx *GrantPathContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseTideSQLVisitor) VisitShowPattern(ctx *ShowPatternContext) interface{} {
 	return v.VisitChildren(ctx)
 }

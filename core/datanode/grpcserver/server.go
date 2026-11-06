@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hanami/tidets/commons/errors"
+	"github.com/hanami/tidets/core/authority"
 	"github.com/hanami/tidets/core/datanode/auth"
 	"github.com/hanami/tidets/core/datanode/metadata"
 	"github.com/hanami/tidets/core/datanode/session"
@@ -18,7 +19,9 @@ import (
 	"github.com/hanami/tidets/core/queryengine"
 	"github.com/hanami/tidets/core/queryengine/backend"
 	"github.com/hanami/tidets/core/queryengine/plan"
+	"github.com/hanami/tidets/core/queryengine/result"
 	"github.com/hanami/tidets/core/schemaengine"
+	"github.com/hanami/tidets/core/sql/ast"
 	"github.com/hanami/tidets/core/storageengine"
 	"github.com/hanami/tidets/core/tsmodel"
 	"github.com/hanami/tidets/protocol/convert"
@@ -37,6 +40,7 @@ type Server struct {
 	sql      *queryengine.Service
 	mgr      *session.Manager
 	auth     auth.Checker
+	accounts *authority.Service
 	hooks    Hooks
 }
 
@@ -46,16 +50,40 @@ func New(engine *storageengine.Engine) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	authChecker := auth.DefaultChecker()
+	authChecker := auth.NewChecker(boot.Authority)
 	catalog := &backend.MetadataCatalog{Meta: boot.Metadata}
 	return &Server{
 		gateway:  boot.Gateway,
 		schema:   boot.Schema,
 		metadata: boot.Metadata,
 		sql:      queryengine.NewService(engine, boot.Gateway, catalog),
-		mgr:      session.NewManager(&authChecker),
+		mgr:      session.NewManager(authChecker),
 		auth:     authChecker,
+		accounts: boot.Authority,
 	}, nil
+}
+
+// Close 先刷账户快照，再关闭序列目录。点数据由存储引擎自己关闭。
+func (s *Server) Close() error {
+	if s == nil {
+		return nil
+	}
+	var err error
+	if s.accounts != nil {
+		if closeErr := s.accounts.Close(); closeErr != nil {
+			log.Printf("close auth: %v", closeErr)
+			err = closeErr
+		}
+	}
+	if s.schema != nil {
+		if closeErr := s.schema.Close(); closeErr != nil {
+			log.Printf("close schema: %v", closeErr)
+			if err == nil {
+				err = closeErr
+			}
+		}
+	}
+	return err
 }
 
 // Schema 返回 schema 服务（DDL / 写入校验）。
@@ -263,6 +291,24 @@ func (s *Server) ExecuteSQL(ctx context.Context, req *pb.ExecuteSQLRequest) (*pb
 		return nil, commons.ToGRPCStatus(err)
 	}
 	info := sess.SessionInfo()
+	if p.Kind == plan.KindAccount {
+		if !s.auth.IsSuper(info.User.UserID) {
+			s.observeSQLFailure(p.Kind, "auth", begin)
+			return nil, commons.ToGRPCStatus(commons.ErrAuthPermissionDenied)
+		}
+		if err := applyAccount(s.accounts, p.Account); err != nil {
+			s.observeSQLFailure(p.Kind, "auth", begin)
+			return nil, commons.ToGRPCStatus(err)
+		}
+		resp, err := sink.SQLToExecuteResponse(&result.Result{AffectedRows: 1})
+		if err != nil {
+			return nil, err
+		}
+		if s.hooks.OnRPCItems != nil {
+			s.hooks.OnRPCItems("ExecuteSQL", 1, sqlResponseItems(resp))
+		}
+		return resp, nil
+	}
 	priv := auth.PrivilegeRead
 	if p.NeedsWrite() {
 		priv = auth.PrivilegeWrite
@@ -284,6 +330,37 @@ func (s *Server) ExecuteSQL(ctx context.Context, req *pb.ExecuteSQLRequest) (*pb
 		s.hooks.OnRPCItems("ExecuteSQL", 1, sqlResponseItems(resp))
 	}
 	return resp, nil
+}
+
+func applyAccount(accounts *authority.Service, op *plan.Account) error {
+	if accounts == nil || op == nil {
+		return commons.ErrSQLUnsupportedStmt
+	}
+	switch op.Op {
+	case plan.OpCreateUser:
+		return accounts.CreateUser(op.Username, op.Password)
+	case plan.OpSetPassword:
+		return accounts.SetPassword(op.Username, op.Password)
+	case plan.OpGrant:
+		return accounts.Grant(op.Username, op.Path, accountPrivs(op.Privs)...)
+	case plan.OpRevoke:
+		return accounts.Revoke(op.Username, op.Path, accountPrivs(op.Privs)...)
+	default:
+		return commons.ErrSQLUnsupportedStmt
+	}
+}
+
+func accountPrivs(privs []ast.AccountPriv) []authority.Privilege {
+	out := make([]authority.Privilege, 0, len(privs))
+	for _, priv := range privs {
+		switch priv {
+		case ast.AccountRead:
+			out = append(out, authority.PrivilegeRead)
+		case ast.AccountWrite:
+			out = append(out, authority.PrivilegeWrite)
+		}
+	}
+	return out
 }
 
 func (s *Server) requireSession(ctx context.Context, sessionID int64) (session.IClientSession, error) {

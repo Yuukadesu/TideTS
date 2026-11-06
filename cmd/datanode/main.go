@@ -122,6 +122,9 @@ func main() {
 
 	log.Println("shutting down...")
 	grpcServer.GracefulStop()
+	if err := srv.Close(); err != nil {
+		log.Printf("close datanode: %v", err)
+	}
 	if metricsSrv != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

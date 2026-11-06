@@ -63,7 +63,25 @@ var ErrSessionNotFound = New("session", CodeNotFound, "not found or closed")
 var (
 	ErrAuthInvalidPath      = New("auth", CodeInvalidArgument, "path is required")
 	ErrAuthPermissionDenied = New("auth", CodePermissionDenied, "permission denied")
+	ErrAuthUsernameRequired = New("auth", CodeInvalidArgument, "username is required")
+	ErrAuthPasswordRequired = New("auth", CodeInvalidArgument, "password is required")
+	ErrAuthPasswordTooLong  = New("auth", CodeInvalidArgument, "password must be at most 72 bytes")
+	ErrAuthUserExists       = New("auth", CodeInvalidArgument, "user already exists")
+	ErrAuthReservedUser     = New("auth", CodeInvalidArgument, "username is reserved")
+	ErrAuthInvalidGrantPath = New("auth", CodeInvalidArgument, "invalid grant path")
+	ErrAuthUserNotFound     = New("auth", CodeNotFound, "user not found")
+	ErrAuthGrantNotFound    = New("auth", CodeNotFound, "grant not found")
+	ErrAuthLogCorrupt       = New("auth", CodeCorrupt, "corrupt auth log, remove data-dir/system/auth")
+	ErrAuthSnapshotCorrupt  = New("auth", CodeCorrupt, "corrupt auth snapshot, remove data-dir/system/auth")
+	ErrAuthNoSuperuser      = New("auth", CodeCorrupt, "no superuser in auth store, remove data-dir/system/auth")
+	ErrAuthLogSync          = New("auth", CodeUnavailable, "auth log sync failed")
 )
+
+// ErrAuthSnapshotUnsupported 账户快照版本与当前代码不一致。
+func ErrAuthSnapshotUnsupported(got, want uint32) *Error {
+	return Errorf("auth", CodeInvalidArgument,
+		"unsupported auth snapshot version %d (want %d), remove data-dir/system/auth", got, want)
+}
 
 // ---------- convert / RPC 值 ----------
 

@@ -9,6 +9,10 @@ grammar TideSQL;
 //   CREATE TIMESERIES root.sg1.d1(temperature) WITH DATATYPE=DOUBLE;
 //   SHOW DEVICES root.sg1.**;
 //   SHOW TIMESERIES root.sg1.d1;
+//   CREATE USER alice 'secret';
+//   ALTER USER alice SET PASSWORD 'secret2';
+//   GRANT READ, WRITE ON root.sg1.** TO alice;
+//   REVOKE WRITE ON root.sg1.** FROM alice;
 
 options {
 }
@@ -20,6 +24,10 @@ statement
     | createTimeseriesStmt
     | showDevicesStmt
     | showTimeseriesStmt
+    | createUserStmt
+    | alterUserStmt
+    | grantStmt
+    | revokeStmt
     ;
 
 insertStmt
@@ -49,6 +57,37 @@ showDevicesStmt
 
 showTimeseriesStmt
     : SHOW TIMESERIES path
+    ;
+
+createUserStmt
+    : CREATE USER IDENTIFIER STRING
+    ;
+
+alterUserStmt
+    : ALTER USER IDENTIFIER SET PASSWORD STRING
+    ;
+
+grantStmt
+    : GRANT privList ON grantPath TO IDENTIFIER
+    ;
+
+revokeStmt
+    : REVOKE privList ON grantPath FROM IDENTIFIER
+    ;
+
+privList
+    : priv (COMMA priv)*
+    ;
+
+priv
+    : READ
+    | WRITE
+    ;
+
+grantPath
+    : path DOT STAR STAR
+    | path DOT STAR
+    | path
     ;
 
 showPattern
@@ -115,6 +154,16 @@ WITH       : W I T H ;
 DATATYPE   : D A T A T Y P E ;
 SHOW       : S H O W ;
 DEVICES    : D E V I C E S ;
+USER       : U S E R ;
+ALTER      : A L T E R ;
+SET        : S E T ;
+PASSWORD   : P A S S W O R D ;
+GRANT      : G R A N T ;
+REVOKE     : R E V O K E ;
+READ       : R E A D ;
+WRITE      : W R I T E ;
+ON         : O N ;
+TO         : T O ;
 
 GTE : '>=' ;
 LTE : '<=' ;

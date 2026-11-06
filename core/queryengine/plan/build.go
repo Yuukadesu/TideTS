@@ -24,6 +24,12 @@ func Build(stmt ast.Stmt) (Plan, error) {
 		return buildShowTimeseries(s)
 	case *ast.DeleteStmt:
 		return buildDelete(s)
+	case *ast.CreateUserStmt:
+		return buildCreateUser(s)
+	case *ast.AlterUserStmt:
+		return buildAlterUser(s)
+	case *ast.GrantStmt:
+		return buildGrant(s)
 	default:
 		return Plan{}, commons.ErrSQLUnsupportedStmt
 	}
@@ -157,6 +163,62 @@ func buildShowTimeseries(s *ast.ShowTimeseriesStmt) (Plan, error) {
 		Kind: KindShowTimeseries,
 		ShowTimeseries: &ShowTimeseries{
 			DevicePath: s.DevicePath,
+		},
+	}, nil
+}
+
+func buildCreateUser(s *ast.CreateUserStmt) (Plan, error) {
+	if s.Username == "" {
+		return Plan{}, commons.ErrAuthUsernameRequired
+	}
+	if s.Password == "" {
+		return Plan{}, commons.ErrAuthPasswordRequired
+	}
+	return Plan{
+		Kind: KindAccount,
+		Account: &Account{
+			Op:       OpCreateUser,
+			Username: s.Username,
+			Password: s.Password,
+		},
+	}, nil
+}
+
+func buildAlterUser(s *ast.AlterUserStmt) (Plan, error) {
+	if s.Username == "" {
+		return Plan{}, commons.ErrAuthUsernameRequired
+	}
+	if s.Password == "" {
+		return Plan{}, commons.ErrAuthPasswordRequired
+	}
+	return Plan{
+		Kind: KindAccount,
+		Account: &Account{
+			Op:       OpSetPassword,
+			Username: s.Username,
+			Password: s.Password,
+		},
+	}, nil
+}
+
+func buildGrant(s *ast.GrantStmt) (Plan, error) {
+	if s.Username == "" {
+		return Plan{}, commons.ErrAuthUsernameRequired
+	}
+	if len(s.Privs) == 0 {
+		return Plan{}, commons.ErrAuthInvalidGrantPath
+	}
+	op := OpGrant
+	if s.Revoke {
+		op = OpRevoke
+	}
+	return Plan{
+		Kind: KindAccount,
+		Account: &Account{
+			Op:       op,
+			Username: s.Username,
+			Path:     s.Path,
+			Privs:    s.Privs,
 		},
 	}, nil
 }

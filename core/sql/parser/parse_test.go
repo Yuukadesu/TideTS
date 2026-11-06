@@ -125,3 +125,41 @@ func TestParseShowTimeseries(t *testing.T) {
 		t.Fatalf("device: %q", show.DevicePath)
 	}
 }
+
+func TestParseAccountStatements(t *testing.T) {
+	stmt, err := sqlparser.Parse("CREATE USER alice 'secret'")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, ok := stmt.(*ast.CreateUserStmt)
+	if !ok || created.Username != "alice" || created.Password != "secret" {
+		t.Fatalf("create user: %+v", stmt)
+	}
+
+	stmt, err = sqlparser.Parse("ALTER USER alice SET PASSWORD 'secret2'")
+	if err != nil {
+		t.Fatal(err)
+	}
+	altered, ok := stmt.(*ast.AlterUserStmt)
+	if !ok || altered.Username != "alice" || altered.Password != "secret2" {
+		t.Fatalf("alter user: %+v", stmt)
+	}
+
+	stmt, err = sqlparser.Parse("GRANT READ, WRITE ON root.sg1.** TO alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant, ok := stmt.(*ast.GrantStmt)
+	if !ok || grant.Revoke || grant.Username != "alice" || grant.Path != "root.sg1.**" || len(grant.Privs) != 2 {
+		t.Fatalf("grant: %+v", stmt)
+	}
+
+	stmt, err = sqlparser.Parse("REVOKE WRITE ON root.sg1.* FROM alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	revoke, ok := stmt.(*ast.GrantStmt)
+	if !ok || !revoke.Revoke || revoke.Path != "root.sg1.*" || len(revoke.Privs) != 1 || revoke.Privs[0] != ast.AccountWrite {
+		t.Fatalf("revoke: %+v", stmt)
+	}
+}

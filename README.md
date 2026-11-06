@@ -7,10 +7,11 @@ Go 实现的 IoTDB 风格单机时序库（学习项目）：gRPC Session、自�
 - 存储：WAL → 双 MemTable → Segment（mmap）→ Compaction + Tombstone
 - 接入：gRPC Session 协议；Go SDK（`client/session`）
 - 查询：SQL（INSERT / SELECT / COUNT / DELETE / DDL / SHOW）+ RPC 点查
+- 鉴权：账户与路径授权落在 `data/system/auth`；登录校验密码哈希，写、查、删按设备路径检查 `READ` / `WRITE`
 - 可观测：Prometheus `/metrics`（Hooks 解耦）
 - 压测：E2E Benchmark（`scripts/bench`）
 
-**当前限制**：单机、无集群；鉴权仅 `root` 单用户；官方 SDK 为 Go。
+**当前限制**：单机、无集群；无角色、不能删用户；官方 SDK 为 Go。
 
 ---
 
@@ -36,11 +37,11 @@ go run ./cmd/datanode -data-dir ./data -wal-sync onflush -metrics-addr :9090
 | 参数 | 默认 | 说明 |
 |------|------|------|
 | `-addr` | `:5556` | gRPC 监听地址 |
-| `-data-dir` | `./data` | 数据目录（WAL + segments） |
+| `-data-dir` | `./data` | 数据目录（WAL、segments、序列目录、账户） |
 | `-wal-sync` | `always` | WAL 同步策略：`always` \| `onflush` |
 | `-metrics-addr` | `:9090` | Prometheus HTTP；置空关闭 |
 
-默认账号：`root` / `root`
+空数据目录会种下超级用户 `root` / `root`。账户语句只有超级用户能执行，普通用户不能自己注册。
 
 ### 2. 使用 CLI（推荐入门）
 
@@ -48,7 +49,18 @@ go run ./cmd/datanode -data-dir ./data -wal-sync onflush -metrics-addr :9090
 go run ./cmd/tidets-cli -host 127.0.0.1 -port 5556
 ```
 
-在 `tidets>` 提示符下输入 SQL（以 `;` 结束），`exit` / `quit` 退出。
+指定账号：
+
+```bash
+go run ./cmd/tidets-cli -host 127.0.0.1 -port 5556 -user alice -password secret
+```
+
+在 `tidets>` 提示符下输入 SQL（以 `;` 结束），`exit` / `quit` 退出。CLI 把语句原样交给 `ExecuteSQL`，没有单独的建账号命令。用 `root` 连上后可以建用户并授权：
+
+```sql
+CREATE USER alice 'secret';
+GRANT READ, WRITE ON root.sg1.** TO alice;
+```
 
 ### 3. 使用 Go SDK
 
@@ -105,10 +117,17 @@ DELETE FROM root.sg1.d1(temperature) WHERE time >= 100 AND time <= 200;
 CREATE TIMESERIES root.sg1.d1(temperature) WITH DATATYPE=DOUBLE;
 SHOW DEVICES root.sg1.**;
 SHOW TIMESERIES root.sg1.d1;
+CREATE USER alice 'secret';
+ALTER USER alice SET PASSWORD 'secret2';
+GRANT READ, WRITE ON root.sg1.** TO alice;
+REVOKE WRITE ON root.sg1.** FROM alice;
 ```
 
 - 同时间戳再次 `INSERT` 为覆盖写（upsert）
 - `DELETE` 必须带 `WHERE` 时间条件
+- `CREATE USER` / `ALTER USER` / `GRANT` / `REVOKE` 只有超级用户能执行。`READ` 与 `WRITE` 分开授予，`write` 不包含 `read`
+- 改密码不踢掉已有会话，下次 `OpenSession` 才校验新密码
+- `SHOW DEVICES root.sg1.**` 按路径前缀 `root.sg1` 鉴权，不展开到每台设备
 
 ### 端到端测试
 
@@ -212,7 +231,7 @@ flowchart TB
   ENG -->|flush / compact| SEG
 ```
 
-**写入**：`Insert RPC → WAL → MemTable → flush → active.seg → seal → NNNNNN.seg`
+**写入**：`Insert RPC → 路径鉴权 → schema 校验 → WAL → MemTable → flush → active.seg → seal → NNNNNN.seg`
 
 **查询**：`MemTable ∪ segments → merge → tombstone 过滤 → 返回`
 
@@ -244,8 +263,11 @@ sequenceDiagram
 ```text
 data/
 ├── system/schema/
-│   ├── mlog.bin            # 元数据 DDL 日志
+│   ├── mlog.bin            # 序列目录 DDL 日志
 │   └── mtree.snapshot      # MTree 快照
+├── system/auth/
+│   ├── authlog.bin         # 账户与路径授权日志
+│   └── auth.snapshot       # 账户快照
 ├── wal.log                 # 点数据 WAL
 ├── wal.checkpoint          # WAL 回放起点
 ├── tombstones.log          # 删除区间持久化
@@ -256,12 +278,14 @@ data/
 
 ### 修改磁盘格式后
 
-本仓库只维护当前一种二进制布局。若修改 segment / WAL / mlog / snapshot 格式，需清空数据目录：
+本仓库只维护当前一种二进制布局。若修改 segment / WAL / mlog / snapshot / authlog 格式，需清空数据目录：
 
 ```bash
 rm -rf ./data
 go run ./cmd/datanode -data-dir ./data
 ```
+
+只删除 `data/system/auth` 会在下次启动时重新种下 `root` / `root`，点数据和序列目录还在。账户文件损坏时进程拒绝启动，不会用空账户继续服务。
 
 ---
 
@@ -277,6 +301,7 @@ core/
   storageengine/         # WAL / MemTable / segment / tombstone
   queryengine/           # SQL 执行
   schemaengine/          # MTree / mlog / snapshot
+  authority/             # 账户日志、密码哈希、路径授权
   datanode/              # gRPC / session / auth
   metrics/               # Prometheus
   sql/                   # ANTLR parser

@@ -31,6 +31,27 @@ type TideSQLListener interface {
 	// EnterShowTimeseriesStmt is called when entering the showTimeseriesStmt production.
 	EnterShowTimeseriesStmt(c *ShowTimeseriesStmtContext)
 
+	// EnterCreateUserStmt is called when entering the createUserStmt production.
+	EnterCreateUserStmt(c *CreateUserStmtContext)
+
+	// EnterAlterUserStmt is called when entering the alterUserStmt production.
+	EnterAlterUserStmt(c *AlterUserStmtContext)
+
+	// EnterGrantStmt is called when entering the grantStmt production.
+	EnterGrantStmt(c *GrantStmtContext)
+
+	// EnterRevokeStmt is called when entering the revokeStmt production.
+	EnterRevokeStmt(c *RevokeStmtContext)
+
+	// EnterPrivList is called when entering the privList production.
+	EnterPrivList(c *PrivListContext)
+
+	// EnterPriv is called when entering the priv production.
+	EnterPriv(c *PrivContext)
+
+	// EnterGrantPath is called when entering the grantPath production.
+	EnterGrantPath(c *GrantPathContext)
+
 	// EnterShowPattern is called when entering the showPattern production.
 	EnterShowPattern(c *ShowPatternContext)
 
@@ -84,6 +105,27 @@ type TideSQLListener interface {
 
 	// ExitShowTimeseriesStmt is called when exiting the showTimeseriesStmt production.
 	ExitShowTimeseriesStmt(c *ShowTimeseriesStmtContext)
+
+	// ExitCreateUserStmt is called when exiting the createUserStmt production.
+	ExitCreateUserStmt(c *CreateUserStmtContext)
+
+	// ExitAlterUserStmt is called when exiting the alterUserStmt production.
+	ExitAlterUserStmt(c *AlterUserStmtContext)
+
+	// ExitGrantStmt is called when exiting the grantStmt production.
+	ExitGrantStmt(c *GrantStmtContext)
+
+	// ExitRevokeStmt is called when exiting the revokeStmt production.
+	ExitRevokeStmt(c *RevokeStmtContext)
+
+	// ExitPrivList is called when exiting the privList production.
+	ExitPrivList(c *PrivListContext)
+
+	// ExitPriv is called when exiting the priv production.
+	ExitPriv(c *PrivContext)
+
+	// ExitGrantPath is called when exiting the grantPath production.
+	ExitGrantPath(c *GrantPathContext)
 
 	// ExitShowPattern is called when exiting the showPattern production.
 	ExitShowPattern(c *ShowPatternContext)
