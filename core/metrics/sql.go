@@ -16,6 +16,8 @@ func planKindLabel(kind plan.Kind) string {
 		return "show_timeseries"
 	case plan.KindDelete:
 		return "delete"
+	case plan.KindAccount:
+		return "account"
 	default:
 		return "unknown"
 	}

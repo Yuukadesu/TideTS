@@ -3,11 +3,12 @@ package session
 import (
 	"testing"
 
+	"github.com/hanami/tidets/core/authority"
 	"github.com/hanami/tidets/core/datanode/auth"
 )
 
 func TestManagerLoginClose(t *testing.T) {
-	mgr := NewManager(auth.DefaultAuthenticator())
+	mgr := NewManager(testChecker(t))
 
 	sess, result := mgr.OpenGRPCSession(OpenParams{
 		Login: LoginParams{
@@ -25,7 +26,7 @@ func TestManagerLoginClose(t *testing.T) {
 	if result.SessionID <= 0 {
 		t.Fatalf("session id: %d", result.SessionID)
 	}
-	if sess.UserID() != 0 || sess.Username() != "root" {
+	if sess.UserID() <= 0 || sess.Username() != "root" {
 		t.Fatalf("user: id=%d name=%s", sess.UserID(), sess.Username())
 	}
 
@@ -43,7 +44,7 @@ func TestManagerLoginClose(t *testing.T) {
 }
 
 func TestManagerLoginReject(t *testing.T) {
-	mgr := NewManager(auth.DefaultAuthenticator())
+	mgr := NewManager(testChecker(t))
 	_, result := mgr.OpenGRPCSession(OpenParams{
 		Login:      LoginParams{Username: "root", Password: "wrong"},
 		ClientAddr: "127.0.0.1",
@@ -54,4 +55,14 @@ func TestManagerLoginReject(t *testing.T) {
 	if mgr.Count() != 0 {
 		t.Fatalf("sessions=%d want 0", mgr.Count())
 	}
+}
+
+func testChecker(t *testing.T) auth.Checker {
+	t.Helper()
+	accounts, err := authority.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = accounts.Close() })
+	return auth.NewChecker(accounts)
 }

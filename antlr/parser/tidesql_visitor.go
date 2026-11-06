@@ -31,6 +31,27 @@ type TideSQLVisitor interface {
 	// Visit a parse tree produced by TideSQLParser#showTimeseriesStmt.
 	VisitShowTimeseriesStmt(ctx *ShowTimeseriesStmtContext) interface{}
 
+	// Visit a parse tree produced by TideSQLParser#createUserStmt.
+	VisitCreateUserStmt(ctx *CreateUserStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#alterUserStmt.
+	VisitAlterUserStmt(ctx *AlterUserStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#grantStmt.
+	VisitGrantStmt(ctx *GrantStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#revokeStmt.
+	VisitRevokeStmt(ctx *RevokeStmtContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#privList.
+	VisitPrivList(ctx *PrivListContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#priv.
+	VisitPriv(ctx *PrivContext) interface{}
+
+	// Visit a parse tree produced by TideSQLParser#grantPath.
+	VisitGrantPath(ctx *GrantPathContext) interface{}
+
 	// Visit a parse tree produced by TideSQLParser#showPattern.
 	VisitShowPattern(ctx *ShowPatternContext) interface{}
 

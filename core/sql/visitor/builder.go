@@ -47,6 +47,18 @@ func (b *Builder) VisitStatement(ctx *parser.StatementContext) interface{} {
 	if ctx.ShowTimeseriesStmt() != nil {
 		return b.VisitShowTimeseriesStmt(ctx.ShowTimeseriesStmt().(*parser.ShowTimeseriesStmtContext))
 	}
+	if ctx.CreateUserStmt() != nil {
+		return b.VisitCreateUserStmt(ctx.CreateUserStmt().(*parser.CreateUserStmtContext))
+	}
+	if ctx.AlterUserStmt() != nil {
+		return b.VisitAlterUserStmt(ctx.AlterUserStmt().(*parser.AlterUserStmtContext))
+	}
+	if ctx.GrantStmt() != nil {
+		return b.VisitGrantStmt(ctx.GrantStmt().(*parser.GrantStmtContext))
+	}
+	if ctx.RevokeStmt() != nil {
+		return b.VisitRevokeStmt(ctx.RevokeStmt().(*parser.RevokeStmtContext))
+	}
 	b.fail(commons.ErrSQLUnsupportedStmt)
 	return nil
 }
@@ -201,6 +213,116 @@ func (b *Builder) VisitShowTimeseriesStmt(ctx *parser.ShowTimeseriesStmtContext)
 		return nil
 	}
 	return &ast.ShowTimeseriesStmt{DevicePath: device}
+}
+
+func (b *Builder) VisitCreateUserStmt(ctx *parser.CreateUserStmtContext) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	username, password, ok := b.visitUserPassword(ctx.IDENTIFIER(), ctx.STRING())
+	if !ok {
+		return nil
+	}
+	return &ast.CreateUserStmt{Username: username, Password: password}
+}
+
+func (b *Builder) VisitAlterUserStmt(ctx *parser.AlterUserStmtContext) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	username, password, ok := b.visitUserPassword(ctx.IDENTIFIER(), ctx.STRING())
+	if !ok {
+		return nil
+	}
+	return &ast.AlterUserStmt{Username: username, Password: password}
+}
+
+func (b *Builder) VisitGrantStmt(ctx *parser.GrantStmtContext) interface{} {
+	return b.visitGrant(ctx.IDENTIFIER(), ctx.PrivList(), ctx.GrantPath(), false)
+}
+
+func (b *Builder) VisitRevokeStmt(ctx *parser.RevokeStmtContext) interface{} {
+	return b.visitGrant(ctx.IDENTIFIER(), ctx.PrivList(), ctx.GrantPath(), true)
+}
+
+func (b *Builder) visitGrant(user interface{ GetText() string }, privs parser.IPrivListContext, path parser.IGrantPathContext, revoke bool) interface{} {
+	if b.err != nil {
+		return nil
+	}
+	if user == nil {
+		b.fail(commons.ErrAuthUsernameRequired)
+		return nil
+	}
+	list, ok := b.visitPrivList(privs)
+	if !ok {
+		return nil
+	}
+	grantPath, ok := b.visitGrantPath(path)
+	if !ok {
+		return nil
+	}
+	return &ast.GrantStmt{
+		Revoke:   revoke,
+		Username: user.GetText(),
+		Path:     grantPath,
+		Privs:    list,
+	}
+}
+
+func (b *Builder) visitUserPassword(user, password interface{ GetText() string }) (string, string, bool) {
+	if user == nil {
+		b.fail(commons.ErrAuthUsernameRequired)
+		return "", "", false
+	}
+	if password == nil {
+		b.fail(commons.ErrAuthPasswordRequired)
+		return "", "", false
+	}
+	secret, err := unquoteString(password.GetText())
+	if err != nil {
+		b.fail(err)
+		return "", "", false
+	}
+	return user.GetText(), secret, true
+}
+
+func (b *Builder) visitPrivList(ctx parser.IPrivListContext) ([]ast.AccountPriv, bool) {
+	if ctx == nil || len(ctx.AllPriv()) == 0 {
+		b.fail(commons.ErrSQLUnsupportedStmt)
+		return nil, false
+	}
+	out := make([]ast.AccountPriv, 0, len(ctx.AllPriv()))
+	for _, p := range ctx.AllPriv() {
+		switch {
+		case p.READ() != nil:
+			out = append(out, ast.AccountRead)
+		case p.WRITE() != nil:
+			out = append(out, ast.AccountWrite)
+		default:
+			b.fail(commons.ErrSQLUnsupportedStmt)
+			return nil, false
+		}
+	}
+	return out, true
+}
+
+func (b *Builder) visitGrantPath(ctx parser.IGrantPathContext) (string, bool) {
+	if ctx == nil {
+		b.fail(commons.ErrAuthInvalidGrantPath)
+		return "", false
+	}
+	path, ok := b.visitPath(ctx.Path())
+	if !ok {
+		return "", false
+	}
+	switch len(ctx.AllSTAR()) {
+	case 2:
+		return path + ".**", true
+	case 1:
+		return path + ".*", true
+	default:
+		return path, true
+	}
 }
 
 func (b *Builder) visitShowPattern(ctx *parser.ShowPatternContext) (string, bool) {

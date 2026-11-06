@@ -1,6 +1,7 @@
 package grpcserver
 
 import (
+	"github.com/hanami/tidets/core/authority"
 	"github.com/hanami/tidets/core/datanode/metadata"
 	"github.com/hanami/tidets/core/dataplane"
 	"github.com/hanami/tidets/core/schemaengine"
@@ -9,9 +10,10 @@ import (
 
 // Bootstrap 启动时打开的 schema、metadata 与数据面网关。
 type Bootstrap struct {
-	Schema   *schemaengine.Service
-	Metadata *metadata.Manager
-	Gateway  *dataplane.Gateway
+	Schema    *schemaengine.Service
+	Metadata  *metadata.Manager
+	Gateway   *dataplane.Gateway
+	Authority *authority.Service
 }
 
 // OpenBootstrap 打开 schema + metadata，并与存储层已有序列对齐。
@@ -26,9 +28,15 @@ func OpenBootstrap(engine *storageengine.Engine) (*Bootstrap, error) {
 		return nil, err
 	}
 	engine.BindSchemaGuard(schemaSvc.Has)
+	accounts, err := authority.Open(engine.DataDir())
+	if err != nil {
+		_ = schemaSvc.Close()
+		return nil, err
+	}
 	return &Bootstrap{
-		Schema:   schemaSvc,
-		Metadata: metaMgr,
-		Gateway:  dataplane.New(engine, schemaSvc),
+		Schema:    schemaSvc,
+		Metadata:  metaMgr,
+		Gateway:   dataplane.New(engine, schemaSvc),
+		Authority: accounts,
 	}, nil
 }

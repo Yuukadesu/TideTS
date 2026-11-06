@@ -89,3 +89,37 @@ type ShowTimeseriesStmt struct {
 }
 
 func (*ShowTimeseriesStmt) stmt() {}
+
+// AccountPriv 账户语句中的路径权限。
+type AccountPriv int
+
+const (
+	AccountRead AccountPriv = iota
+	AccountWrite
+)
+
+// CreateUserStmt CREATE USER name 'password'。
+type CreateUserStmt struct {
+	Username string
+	Password string
+}
+
+func (*CreateUserStmt) stmt() {}
+
+// AlterUserStmt ALTER USER name SET PASSWORD 'password'。
+type AlterUserStmt struct {
+	Username string
+	Password string
+}
+
+func (*AlterUserStmt) stmt() {}
+
+// GrantStmt GRANT 或 REVOKE 路径权限。
+type GrantStmt struct {
+	Revoke   bool
+	Username string
+	Path     string
+	Privs    []AccountPriv
+}
+
+func (*GrantStmt) stmt() {}

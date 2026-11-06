@@ -68,6 +68,48 @@ func (s *BaseTideSQLListener) EnterShowTimeseriesStmt(ctx *ShowTimeseriesStmtCon
 // ExitShowTimeseriesStmt is called when production showTimeseriesStmt is exited.
 func (s *BaseTideSQLListener) ExitShowTimeseriesStmt(ctx *ShowTimeseriesStmtContext) {}
 
+// EnterCreateUserStmt is called when production createUserStmt is entered.
+func (s *BaseTideSQLListener) EnterCreateUserStmt(ctx *CreateUserStmtContext) {}
+
+// ExitCreateUserStmt is called when production createUserStmt is exited.
+func (s *BaseTideSQLListener) ExitCreateUserStmt(ctx *CreateUserStmtContext) {}
+
+// EnterAlterUserStmt is called when production alterUserStmt is entered.
+func (s *BaseTideSQLListener) EnterAlterUserStmt(ctx *AlterUserStmtContext) {}
+
+// ExitAlterUserStmt is called when production alterUserStmt is exited.
+func (s *BaseTideSQLListener) ExitAlterUserStmt(ctx *AlterUserStmtContext) {}
+
+// EnterGrantStmt is called when production grantStmt is entered.
+func (s *BaseTideSQLListener) EnterGrantStmt(ctx *GrantStmtContext) {}
+
+// ExitGrantStmt is called when production grantStmt is exited.
+func (s *BaseTideSQLListener) ExitGrantStmt(ctx *GrantStmtContext) {}
+
+// EnterRevokeStmt is called when production revokeStmt is entered.
+func (s *BaseTideSQLListener) EnterRevokeStmt(ctx *RevokeStmtContext) {}
+
+// ExitRevokeStmt is called when production revokeStmt is exited.
+func (s *BaseTideSQLListener) ExitRevokeStmt(ctx *RevokeStmtContext) {}
+
+// EnterPrivList is called when production privList is entered.
+func (s *BaseTideSQLListener) EnterPrivList(ctx *PrivListContext) {}
+
+// ExitPrivList is called when production privList is exited.
+func (s *BaseTideSQLListener) ExitPrivList(ctx *PrivListContext) {}
+
+// EnterPriv is called when production priv is entered.
+func (s *BaseTideSQLListener) EnterPriv(ctx *PrivContext) {}
+
+// ExitPriv is called when production priv is exited.
+func (s *BaseTideSQLListener) ExitPriv(ctx *PrivContext) {}
+
+// EnterGrantPath is called when production grantPath is entered.
+func (s *BaseTideSQLListener) EnterGrantPath(ctx *GrantPathContext) {}
+
+// ExitGrantPath is called when production grantPath is exited.
+func (s *BaseTideSQLListener) ExitGrantPath(ctx *GrantPathContext) {}
+
 // EnterShowPattern is called when production showPattern is entered.
 func (s *BaseTideSQLListener) EnterShowPattern(ctx *ShowPatternContext) {}
 

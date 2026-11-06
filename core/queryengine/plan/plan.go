@@ -1,6 +1,9 @@
 package plan
 
-import "github.com/hanami/tidets/core/tsmodel"
+import (
+	"github.com/hanami/tidets/core/sql/ast"
+	"github.com/hanami/tidets/core/tsmodel"
+)
 
 // Kind 执行计划类型。
 type Kind int
@@ -12,6 +15,7 @@ const (
 	KindShowDevices
 	KindShowTimeseries
 	KindDelete
+	KindAccount
 )
 
 // Plan 物理计划（单机最简）。
@@ -24,6 +28,26 @@ type Plan struct {
 	ShowDevices      *ShowDevices
 	ShowTimeseries   *ShowTimeseries
 	Delete           *Delete
+	Account          *Account
+}
+
+// AccountOp 账户管理操作。
+type AccountOp int
+
+const (
+	OpCreateUser AccountOp = iota
+	OpSetPassword
+	OpGrant
+	OpRevoke
+)
+
+// Account 账户语句的物理计划。超级用户检查在进入存储引擎之前完成。
+type Account struct {
+	Op       AccountOp
+	Username string
+	Password string
+	Path     string
+	Privs    []ast.AccountPriv
 }
 
 type Insert struct {

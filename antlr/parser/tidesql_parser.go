@@ -33,86 +33,116 @@ func tidesqlParserInit() {
 	staticData := &TideSQLParserStaticData
 	staticData.LiteralNames = []string{
 		"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
-		"", "'>='", "'<='", "'>'", "'<'", "'='", "'('", "')'", "','", "'.'",
-		"';'", "'*'",
+		"", "", "", "", "", "", "", "", "", "", "", "'>='", "'<='", "'>'", "'<'",
+		"'='", "'('", "')'", "','", "'.'", "';'", "'*'",
 	}
 	staticData.SymbolicNames = []string{
 		"", "INSERT", "DELETE", "INTO", "SELECT", "COUNT", "FROM", "WHERE",
 		"AND", "VALUES", "LIMIT", "TIME", "CREATE", "TIMESERIES", "WITH", "DATATYPE",
-		"SHOW", "DEVICES", "GTE", "LTE", "GT", "LT", "EQ", "LPAREN", "RPAREN",
-		"COMMA", "DOT", "SEMI", "STAR", "BOOLEAN", "INTEGER", "FLOAT", "STRING",
-		"IDENTIFIER", "WS",
+		"SHOW", "DEVICES", "USER", "ALTER", "SET", "PASSWORD", "GRANT", "REVOKE",
+		"READ", "WRITE", "ON", "TO", "GTE", "LTE", "GT", "LT", "EQ", "LPAREN",
+		"RPAREN", "COMMA", "DOT", "SEMI", "STAR", "BOOLEAN", "INTEGER", "FLOAT",
+		"STRING", "IDENTIFIER", "WS",
 	}
 	staticData.RuleNames = []string{
 		"statement", "insertStmt", "valueRow", "selectStmt", "deleteStmt", "createTimeseriesStmt",
-		"showDevicesStmt", "showTimeseriesStmt", "showPattern", "whereClause",
-		"timePredicate", "cmpOp", "limitClause", "path", "measurement", "dataTypeName",
-		"timestamp", "value",
+		"showDevicesStmt", "showTimeseriesStmt", "createUserStmt", "alterUserStmt",
+		"grantStmt", "revokeStmt", "privList", "priv", "grantPath", "showPattern",
+		"whereClause", "timePredicate", "cmpOp", "limitClause", "path", "measurement",
+		"dataTypeName", "timestamp", "value",
 	}
 	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
-		4, 1, 34, 156, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
+		4, 1, 44, 222, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
 		4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7,
 		10, 2, 11, 7, 11, 2, 12, 7, 12, 2, 13, 7, 13, 2, 14, 7, 14, 2, 15, 7, 15,
-		2, 16, 7, 16, 2, 17, 7, 17, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 3, 0, 43,
-		8, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1,
-		55, 8, 1, 10, 1, 12, 1, 58, 9, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
-		3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 71, 8, 3, 1, 3, 3, 3, 74, 8, 3, 1, 3,
-		1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 84, 8, 3, 3, 3, 86, 8,
-		3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 5, 1, 5, 1, 5, 1,
-		5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 6, 1, 6, 1, 6, 3, 6, 110,
-		8, 6, 1, 7, 1, 7, 1, 7, 1, 7, 1, 8, 1, 8, 1, 8, 1, 8, 3, 8, 120, 8, 8,
-		1, 9, 1, 9, 1, 9, 1, 9, 5, 9, 126, 8, 9, 10, 9, 12, 9, 129, 9, 9, 1, 10,
-		1, 10, 1, 10, 1, 10, 1, 11, 1, 11, 1, 12, 1, 12, 1, 12, 1, 13, 1, 13, 1,
-		13, 5, 13, 143, 8, 13, 10, 13, 12, 13, 146, 9, 13, 1, 14, 1, 14, 1, 15,
-		1, 15, 1, 16, 1, 16, 1, 17, 1, 17, 1, 17, 0, 0, 18, 0, 2, 4, 6, 8, 10,
-		12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 0, 2, 1, 0, 18, 22, 1,
-		0, 29, 32, 151, 0, 42, 1, 0, 0, 0, 2, 44, 1, 0, 0, 0, 4, 59, 1, 0, 0, 0,
-		6, 85, 1, 0, 0, 0, 8, 87, 1, 0, 0, 0, 10, 95, 1, 0, 0, 0, 12, 106, 1, 0,
-		0, 0, 14, 111, 1, 0, 0, 0, 16, 115, 1, 0, 0, 0, 18, 121, 1, 0, 0, 0, 20,
-		130, 1, 0, 0, 0, 22, 134, 1, 0, 0, 0, 24, 136, 1, 0, 0, 0, 26, 139, 1,
-		0, 0, 0, 28, 147, 1, 0, 0, 0, 30, 149, 1, 0, 0, 0, 32, 151, 1, 0, 0, 0,
-		34, 153, 1, 0, 0, 0, 36, 43, 3, 2, 1, 0, 37, 43, 3, 6, 3, 0, 38, 43, 3,
-		8, 4, 0, 39, 43, 3, 10, 5, 0, 40, 43, 3, 12, 6, 0, 41, 43, 3, 14, 7, 0,
-		42, 36, 1, 0, 0, 0, 42, 37, 1, 0, 0, 0, 42, 38, 1, 0, 0, 0, 42, 39, 1,
-		0, 0, 0, 42, 40, 1, 0, 0, 0, 42, 41, 1, 0, 0, 0, 43, 1, 1, 0, 0, 0, 44,
-		45, 5, 1, 0, 0, 45, 46, 5, 3, 0, 0, 46, 47, 3, 26, 13, 0, 47, 48, 5, 23,
-		0, 0, 48, 49, 3, 28, 14, 0, 49, 50, 5, 24, 0, 0, 50, 51, 5, 9, 0, 0, 51,
-		56, 3, 4, 2, 0, 52, 53, 5, 25, 0, 0, 53, 55, 3, 4, 2, 0, 54, 52, 1, 0,
-		0, 0, 55, 58, 1, 0, 0, 0, 56, 54, 1, 0, 0, 0, 56, 57, 1, 0, 0, 0, 57, 3,
-		1, 0, 0, 0, 58, 56, 1, 0, 0, 0, 59, 60, 5, 23, 0, 0, 60, 61, 3, 32, 16,
-		0, 61, 62, 5, 25, 0, 0, 62, 63, 3, 34, 17, 0, 63, 64, 5, 24, 0, 0, 64,
-		5, 1, 0, 0, 0, 65, 66, 5, 4, 0, 0, 66, 67, 3, 28, 14, 0, 67, 68, 5, 6,
-		0, 0, 68, 70, 3, 26, 13, 0, 69, 71, 3, 18, 9, 0, 70, 69, 1, 0, 0, 0, 70,
-		71, 1, 0, 0, 0, 71, 73, 1, 0, 0, 0, 72, 74, 3, 24, 12, 0, 73, 72, 1, 0,
-		0, 0, 73, 74, 1, 0, 0, 0, 74, 86, 1, 0, 0, 0, 75, 76, 5, 4, 0, 0, 76, 77,
-		5, 5, 0, 0, 77, 78, 5, 23, 0, 0, 78, 79, 3, 28, 14, 0, 79, 80, 5, 24, 0,
-		0, 80, 81, 5, 6, 0, 0, 81, 83, 3, 26, 13, 0, 82, 84, 3, 18, 9, 0, 83, 82,
-		1, 0, 0, 0, 83, 84, 1, 0, 0, 0, 84, 86, 1, 0, 0, 0, 85, 65, 1, 0, 0, 0,
-		85, 75, 1, 0, 0, 0, 86, 7, 1, 0, 0, 0, 87, 88, 5, 2, 0, 0, 88, 89, 5, 6,
-		0, 0, 89, 90, 3, 26, 13, 0, 90, 91, 5, 23, 0, 0, 91, 92, 3, 28, 14, 0,
-		92, 93, 5, 24, 0, 0, 93, 94, 3, 18, 9, 0, 94, 9, 1, 0, 0, 0, 95, 96, 5,
-		12, 0, 0, 96, 97, 5, 13, 0, 0, 97, 98, 3, 26, 13, 0, 98, 99, 5, 23, 0,
-		0, 99, 100, 3, 28, 14, 0, 100, 101, 5, 24, 0, 0, 101, 102, 5, 14, 0, 0,
-		102, 103, 5, 15, 0, 0, 103, 104, 5, 22, 0, 0, 104, 105, 3, 30, 15, 0, 105,
-		11, 1, 0, 0, 0, 106, 107, 5, 16, 0, 0, 107, 109, 5, 17, 0, 0, 108, 110,
-		3, 16, 8, 0, 109, 108, 1, 0, 0, 0, 109, 110, 1, 0, 0, 0, 110, 13, 1, 0,
-		0, 0, 111, 112, 5, 16, 0, 0, 112, 113, 5, 13, 0, 0, 113, 114, 3, 26, 13,
-		0, 114, 15, 1, 0, 0, 0, 115, 119, 3, 26, 13, 0, 116, 117, 5, 26, 0, 0,
-		117, 118, 5, 28, 0, 0, 118, 120, 5, 28, 0, 0, 119, 116, 1, 0, 0, 0, 119,
-		120, 1, 0, 0, 0, 120, 17, 1, 0, 0, 0, 121, 122, 5, 7, 0, 0, 122, 127, 3,
-		20, 10, 0, 123, 124, 5, 8, 0, 0, 124, 126, 3, 20, 10, 0, 125, 123, 1, 0,
-		0, 0, 126, 129, 1, 0, 0, 0, 127, 125, 1, 0, 0, 0, 127, 128, 1, 0, 0, 0,
-		128, 19, 1, 0, 0, 0, 129, 127, 1, 0, 0, 0, 130, 131, 5, 11, 0, 0, 131,
-		132, 3, 22, 11, 0, 132, 133, 5, 30, 0, 0, 133, 21, 1, 0, 0, 0, 134, 135,
-		7, 0, 0, 0, 135, 23, 1, 0, 0, 0, 136, 137, 5, 10, 0, 0, 137, 138, 5, 30,
-		0, 0, 138, 25, 1, 0, 0, 0, 139, 144, 5, 33, 0, 0, 140, 141, 5, 26, 0, 0,
-		141, 143, 5, 33, 0, 0, 142, 140, 1, 0, 0, 0, 143, 146, 1, 0, 0, 0, 144,
-		142, 1, 0, 0, 0, 144, 145, 1, 0, 0, 0, 145, 27, 1, 0, 0, 0, 146, 144, 1,
-		0, 0, 0, 147, 148, 5, 33, 0, 0, 148, 29, 1, 0, 0, 0, 149, 150, 5, 33, 0,
-		0, 150, 31, 1, 0, 0, 0, 151, 152, 5, 30, 0, 0, 152, 33, 1, 0, 0, 0, 153,
-		154, 7, 1, 0, 0, 154, 35, 1, 0, 0, 0, 10, 42, 56, 70, 73, 83, 85, 109,
-		119, 127, 144,
+		2, 16, 7, 16, 2, 17, 7, 17, 2, 18, 7, 18, 2, 19, 7, 19, 2, 20, 7, 20, 2,
+		21, 7, 21, 2, 22, 7, 22, 2, 23, 7, 23, 2, 24, 7, 24, 1, 0, 1, 0, 1, 0,
+		1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 3, 0, 61, 8, 0, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 73, 8, 1, 10, 1, 12,
+		1, 76, 9, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 3, 1, 3, 1, 3, 1, 3,
+		1, 3, 3, 3, 89, 8, 3, 1, 3, 3, 3, 92, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1,
+		3, 1, 3, 1, 3, 1, 3, 3, 3, 102, 8, 3, 3, 3, 104, 8, 3, 1, 4, 1, 4, 1, 4,
+		1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5,
+		1, 5, 1, 5, 1, 5, 1, 5, 1, 6, 1, 6, 1, 6, 3, 6, 128, 8, 6, 1, 7, 1, 7,
+		1, 7, 1, 7, 1, 8, 1, 8, 1, 8, 1, 8, 1, 8, 1, 9, 1, 9, 1, 9, 1, 9, 1, 9,
+		1, 9, 1, 9, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 11, 1,
+		11, 1, 11, 1, 11, 1, 11, 1, 11, 1, 11, 1, 12, 1, 12, 1, 12, 5, 12, 163,
+		8, 12, 10, 12, 12, 12, 166, 9, 12, 1, 13, 1, 13, 1, 14, 1, 14, 1, 14, 1,
+		14, 1, 14, 1, 14, 1, 14, 1, 14, 1, 14, 1, 14, 3, 14, 180, 8, 14, 1, 15,
+		1, 15, 1, 15, 1, 15, 3, 15, 186, 8, 15, 1, 16, 1, 16, 1, 16, 1, 16, 5,
+		16, 192, 8, 16, 10, 16, 12, 16, 195, 9, 16, 1, 17, 1, 17, 1, 17, 1, 17,
+		1, 18, 1, 18, 1, 19, 1, 19, 1, 19, 1, 20, 1, 20, 1, 20, 5, 20, 209, 8,
+		20, 10, 20, 12, 20, 212, 9, 20, 1, 21, 1, 21, 1, 22, 1, 22, 1, 23, 1, 23,
+		1, 24, 1, 24, 1, 24, 0, 0, 25, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22,
+		24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 0, 3, 1, 0, 24, 25,
+		1, 0, 28, 32, 1, 0, 39, 42, 217, 0, 60, 1, 0, 0, 0, 2, 62, 1, 0, 0, 0,
+		4, 77, 1, 0, 0, 0, 6, 103, 1, 0, 0, 0, 8, 105, 1, 0, 0, 0, 10, 113, 1,
+		0, 0, 0, 12, 124, 1, 0, 0, 0, 14, 129, 1, 0, 0, 0, 16, 133, 1, 0, 0, 0,
+		18, 138, 1, 0, 0, 0, 20, 145, 1, 0, 0, 0, 22, 152, 1, 0, 0, 0, 24, 159,
+		1, 0, 0, 0, 26, 167, 1, 0, 0, 0, 28, 179, 1, 0, 0, 0, 30, 181, 1, 0, 0,
+		0, 32, 187, 1, 0, 0, 0, 34, 196, 1, 0, 0, 0, 36, 200, 1, 0, 0, 0, 38, 202,
+		1, 0, 0, 0, 40, 205, 1, 0, 0, 0, 42, 213, 1, 0, 0, 0, 44, 215, 1, 0, 0,
+		0, 46, 217, 1, 0, 0, 0, 48, 219, 1, 0, 0, 0, 50, 61, 3, 2, 1, 0, 51, 61,
+		3, 6, 3, 0, 52, 61, 3, 8, 4, 0, 53, 61, 3, 10, 5, 0, 54, 61, 3, 12, 6,
+		0, 55, 61, 3, 14, 7, 0, 56, 61, 3, 16, 8, 0, 57, 61, 3, 18, 9, 0, 58, 61,
+		3, 20, 10, 0, 59, 61, 3, 22, 11, 0, 60, 50, 1, 0, 0, 0, 60, 51, 1, 0, 0,
+		0, 60, 52, 1, 0, 0, 0, 60, 53, 1, 0, 0, 0, 60, 54, 1, 0, 0, 0, 60, 55,
+		1, 0, 0, 0, 60, 56, 1, 0, 0, 0, 60, 57, 1, 0, 0, 0, 60, 58, 1, 0, 0, 0,
+		60, 59, 1, 0, 0, 0, 61, 1, 1, 0, 0, 0, 62, 63, 5, 1, 0, 0, 63, 64, 5, 3,
+		0, 0, 64, 65, 3, 40, 20, 0, 65, 66, 5, 33, 0, 0, 66, 67, 3, 42, 21, 0,
+		67, 68, 5, 34, 0, 0, 68, 69, 5, 9, 0, 0, 69, 74, 3, 4, 2, 0, 70, 71, 5,
+		35, 0, 0, 71, 73, 3, 4, 2, 0, 72, 70, 1, 0, 0, 0, 73, 76, 1, 0, 0, 0, 74,
+		72, 1, 0, 0, 0, 74, 75, 1, 0, 0, 0, 75, 3, 1, 0, 0, 0, 76, 74, 1, 0, 0,
+		0, 77, 78, 5, 33, 0, 0, 78, 79, 3, 46, 23, 0, 79, 80, 5, 35, 0, 0, 80,
+		81, 3, 48, 24, 0, 81, 82, 5, 34, 0, 0, 82, 5, 1, 0, 0, 0, 83, 84, 5, 4,
+		0, 0, 84, 85, 3, 42, 21, 0, 85, 86, 5, 6, 0, 0, 86, 88, 3, 40, 20, 0, 87,
+		89, 3, 32, 16, 0, 88, 87, 1, 0, 0, 0, 88, 89, 1, 0, 0, 0, 89, 91, 1, 0,
+		0, 0, 90, 92, 3, 38, 19, 0, 91, 90, 1, 0, 0, 0, 91, 92, 1, 0, 0, 0, 92,
+		104, 1, 0, 0, 0, 93, 94, 5, 4, 0, 0, 94, 95, 5, 5, 0, 0, 95, 96, 5, 33,
+		0, 0, 96, 97, 3, 42, 21, 0, 97, 98, 5, 34, 0, 0, 98, 99, 5, 6, 0, 0, 99,
+		101, 3, 40, 20, 0, 100, 102, 3, 32, 16, 0, 101, 100, 1, 0, 0, 0, 101, 102,
+		1, 0, 0, 0, 102, 104, 1, 0, 0, 0, 103, 83, 1, 0, 0, 0, 103, 93, 1, 0, 0,
+		0, 104, 7, 1, 0, 0, 0, 105, 106, 5, 2, 0, 0, 106, 107, 5, 6, 0, 0, 107,
+		108, 3, 40, 20, 0, 108, 109, 5, 33, 0, 0, 109, 110, 3, 42, 21, 0, 110,
+		111, 5, 34, 0, 0, 111, 112, 3, 32, 16, 0, 112, 9, 1, 0, 0, 0, 113, 114,
+		5, 12, 0, 0, 114, 115, 5, 13, 0, 0, 115, 116, 3, 40, 20, 0, 116, 117, 5,
+		33, 0, 0, 117, 118, 3, 42, 21, 0, 118, 119, 5, 34, 0, 0, 119, 120, 5, 14,
+		0, 0, 120, 121, 5, 15, 0, 0, 121, 122, 5, 32, 0, 0, 122, 123, 3, 44, 22,
+		0, 123, 11, 1, 0, 0, 0, 124, 125, 5, 16, 0, 0, 125, 127, 5, 17, 0, 0, 126,
+		128, 3, 30, 15, 0, 127, 126, 1, 0, 0, 0, 127, 128, 1, 0, 0, 0, 128, 13,
+		1, 0, 0, 0, 129, 130, 5, 16, 0, 0, 130, 131, 5, 13, 0, 0, 131, 132, 3,
+		40, 20, 0, 132, 15, 1, 0, 0, 0, 133, 134, 5, 12, 0, 0, 134, 135, 5, 18,
+		0, 0, 135, 136, 5, 43, 0, 0, 136, 137, 5, 42, 0, 0, 137, 17, 1, 0, 0, 0,
+		138, 139, 5, 19, 0, 0, 139, 140, 5, 18, 0, 0, 140, 141, 5, 43, 0, 0, 141,
+		142, 5, 20, 0, 0, 142, 143, 5, 21, 0, 0, 143, 144, 5, 42, 0, 0, 144, 19,
+		1, 0, 0, 0, 145, 146, 5, 22, 0, 0, 146, 147, 3, 24, 12, 0, 147, 148, 5,
+		26, 0, 0, 148, 149, 3, 28, 14, 0, 149, 150, 5, 27, 0, 0, 150, 151, 5, 43,
+		0, 0, 151, 21, 1, 0, 0, 0, 152, 153, 5, 23, 0, 0, 153, 154, 3, 24, 12,
+		0, 154, 155, 5, 26, 0, 0, 155, 156, 3, 28, 14, 0, 156, 157, 5, 6, 0, 0,
+		157, 158, 5, 43, 0, 0, 158, 23, 1, 0, 0, 0, 159, 164, 3, 26, 13, 0, 160,
+		161, 5, 35, 0, 0, 161, 163, 3, 26, 13, 0, 162, 160, 1, 0, 0, 0, 163, 166,
+		1, 0, 0, 0, 164, 162, 1, 0, 0, 0, 164, 165, 1, 0, 0, 0, 165, 25, 1, 0,
+		0, 0, 166, 164, 1, 0, 0, 0, 167, 168, 7, 0, 0, 0, 168, 27, 1, 0, 0, 0,
+		169, 170, 3, 40, 20, 0, 170, 171, 5, 36, 0, 0, 171, 172, 5, 38, 0, 0, 172,
+		173, 5, 38, 0, 0, 173, 180, 1, 0, 0, 0, 174, 175, 3, 40, 20, 0, 175, 176,
+		5, 36, 0, 0, 176, 177, 5, 38, 0, 0, 177, 180, 1, 0, 0, 0, 178, 180, 3,
+		40, 20, 0, 179, 169, 1, 0, 0, 0, 179, 174, 1, 0, 0, 0, 179, 178, 1, 0,
+		0, 0, 180, 29, 1, 0, 0, 0, 181, 185, 3, 40, 20, 0, 182, 183, 5, 36, 0,
+		0, 183, 184, 5, 38, 0, 0, 184, 186, 5, 38, 0, 0, 185, 182, 1, 0, 0, 0,
+		185, 186, 1, 0, 0, 0, 186, 31, 1, 0, 0, 0, 187, 188, 5, 7, 0, 0, 188, 193,
+		3, 34, 17, 0, 189, 190, 5, 8, 0, 0, 190, 192, 3, 34, 17, 0, 191, 189, 1,
+		0, 0, 0, 192, 195, 1, 0, 0, 0, 193, 191, 1, 0, 0, 0, 193, 194, 1, 0, 0,
+		0, 194, 33, 1, 0, 0, 0, 195, 193, 1, 0, 0, 0, 196, 197, 5, 11, 0, 0, 197,
+		198, 3, 36, 18, 0, 198, 199, 5, 40, 0, 0, 199, 35, 1, 0, 0, 0, 200, 201,
+		7, 1, 0, 0, 201, 37, 1, 0, 0, 0, 202, 203, 5, 10, 0, 0, 203, 204, 5, 40,
+		0, 0, 204, 39, 1, 0, 0, 0, 205, 210, 5, 43, 0, 0, 206, 207, 5, 36, 0, 0,
+		207, 209, 5, 43, 0, 0, 208, 206, 1, 0, 0, 0, 209, 212, 1, 0, 0, 0, 210,
+		208, 1, 0, 0, 0, 210, 211, 1, 0, 0, 0, 211, 41, 1, 0, 0, 0, 212, 210, 1,
+		0, 0, 0, 213, 214, 5, 43, 0, 0, 214, 43, 1, 0, 0, 0, 215, 216, 5, 43, 0,
+		0, 216, 45, 1, 0, 0, 0, 217, 218, 5, 40, 0, 0, 218, 47, 1, 0, 0, 0, 219,
+		220, 7, 2, 0, 0, 220, 49, 1, 0, 0, 0, 12, 60, 74, 88, 91, 101, 103, 127,
+		164, 179, 185, 193, 210,
 	}
 	deserializer := antlr.NewATNDeserializer(nil)
 	staticData.atn = deserializer.Deserialize(staticData.serializedATN)
@@ -168,23 +198,33 @@ const (
 	TideSQLParserDATATYPE   = 15
 	TideSQLParserSHOW       = 16
 	TideSQLParserDEVICES    = 17
-	TideSQLParserGTE        = 18
-	TideSQLParserLTE        = 19
-	TideSQLParserGT         = 20
-	TideSQLParserLT         = 21
-	TideSQLParserEQ         = 22
-	TideSQLParserLPAREN     = 23
-	TideSQLParserRPAREN     = 24
-	TideSQLParserCOMMA      = 25
-	TideSQLParserDOT        = 26
-	TideSQLParserSEMI       = 27
-	TideSQLParserSTAR       = 28
-	TideSQLParserBOOLEAN    = 29
-	TideSQLParserINTEGER    = 30
-	TideSQLParserFLOAT      = 31
-	TideSQLParserSTRING     = 32
-	TideSQLParserIDENTIFIER = 33
-	TideSQLParserWS         = 34
+	TideSQLParserUSER       = 18
+	TideSQLParserALTER      = 19
+	TideSQLParserSET        = 20
+	TideSQLParserPASSWORD   = 21
+	TideSQLParserGRANT      = 22
+	TideSQLParserREVOKE     = 23
+	TideSQLParserREAD       = 24
+	TideSQLParserWRITE      = 25
+	TideSQLParserON         = 26
+	TideSQLParserTO         = 27
+	TideSQLParserGTE        = 28
+	TideSQLParserLTE        = 29
+	TideSQLParserGT         = 30
+	TideSQLParserLT         = 31
+	TideSQLParserEQ         = 32
+	TideSQLParserLPAREN     = 33
+	TideSQLParserRPAREN     = 34
+	TideSQLParserCOMMA      = 35
+	TideSQLParserDOT        = 36
+	TideSQLParserSEMI       = 37
+	TideSQLParserSTAR       = 38
+	TideSQLParserBOOLEAN    = 39
+	TideSQLParserINTEGER    = 40
+	TideSQLParserFLOAT      = 41
+	TideSQLParserSTRING     = 42
+	TideSQLParserIDENTIFIER = 43
+	TideSQLParserWS         = 44
 )
 
 // TideSQLParser rules.
@@ -197,16 +237,23 @@ const (
 	TideSQLParserRULE_createTimeseriesStmt = 5
 	TideSQLParserRULE_showDevicesStmt      = 6
 	TideSQLParserRULE_showTimeseriesStmt   = 7
-	TideSQLParserRULE_showPattern          = 8
-	TideSQLParserRULE_whereClause          = 9
-	TideSQLParserRULE_timePredicate        = 10
-	TideSQLParserRULE_cmpOp                = 11
-	TideSQLParserRULE_limitClause          = 12
-	TideSQLParserRULE_path                 = 13
-	TideSQLParserRULE_measurement          = 14
-	TideSQLParserRULE_dataTypeName         = 15
-	TideSQLParserRULE_timestamp            = 16
-	TideSQLParserRULE_value                = 17
+	TideSQLParserRULE_createUserStmt       = 8
+	TideSQLParserRULE_alterUserStmt        = 9
+	TideSQLParserRULE_grantStmt            = 10
+	TideSQLParserRULE_revokeStmt           = 11
+	TideSQLParserRULE_privList             = 12
+	TideSQLParserRULE_priv                 = 13
+	TideSQLParserRULE_grantPath            = 14
+	TideSQLParserRULE_showPattern          = 15
+	TideSQLParserRULE_whereClause          = 16
+	TideSQLParserRULE_timePredicate        = 17
+	TideSQLParserRULE_cmpOp                = 18
+	TideSQLParserRULE_limitClause          = 19
+	TideSQLParserRULE_path                 = 20
+	TideSQLParserRULE_measurement          = 21
+	TideSQLParserRULE_dataTypeName         = 22
+	TideSQLParserRULE_timestamp            = 23
+	TideSQLParserRULE_value                = 24
 )
 
 // IStatementContext is an interface to support dynamic dispatch.
@@ -223,6 +270,10 @@ type IStatementContext interface {
 	CreateTimeseriesStmt() ICreateTimeseriesStmtContext
 	ShowDevicesStmt() IShowDevicesStmtContext
 	ShowTimeseriesStmt() IShowTimeseriesStmtContext
+	CreateUserStmt() ICreateUserStmtContext
+	AlterUserStmt() IAlterUserStmtContext
+	GrantStmt() IGrantStmtContext
+	RevokeStmt() IRevokeStmtContext
 
 	// IsStatementContext differentiates from other interfaces.
 	IsStatementContext()
@@ -356,6 +407,70 @@ func (s *StatementContext) ShowTimeseriesStmt() IShowTimeseriesStmtContext {
 	return t.(IShowTimeseriesStmtContext)
 }
 
+func (s *StatementContext) CreateUserStmt() ICreateUserStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ICreateUserStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ICreateUserStmtContext)
+}
+
+func (s *StatementContext) AlterUserStmt() IAlterUserStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IAlterUserStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IAlterUserStmtContext)
+}
+
+func (s *StatementContext) GrantStmt() IGrantStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IGrantStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IGrantStmtContext)
+}
+
+func (s *StatementContext) RevokeStmt() IRevokeStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IRevokeStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IRevokeStmtContext)
+}
+
 func (s *StatementContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
@@ -389,7 +504,7 @@ func (s *StatementContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 func (p *TideSQLParser) Statement() (localctx IStatementContext) {
 	localctx = NewStatementContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 0, TideSQLParserRULE_statement)
-	p.SetState(42)
+	p.SetState(60)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -399,43 +514,71 @@ func (p *TideSQLParser) Statement() (localctx IStatementContext) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(36)
+			p.SetState(50)
 			p.InsertStmt()
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(37)
+			p.SetState(51)
 			p.SelectStmt()
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(38)
+			p.SetState(52)
 			p.DeleteStmt()
 		}
 
 	case 4:
 		p.EnterOuterAlt(localctx, 4)
 		{
-			p.SetState(39)
+			p.SetState(53)
 			p.CreateTimeseriesStmt()
 		}
 
 	case 5:
 		p.EnterOuterAlt(localctx, 5)
 		{
-			p.SetState(40)
+			p.SetState(54)
 			p.ShowDevicesStmt()
 		}
 
 	case 6:
 		p.EnterOuterAlt(localctx, 6)
 		{
-			p.SetState(41)
+			p.SetState(55)
 			p.ShowTimeseriesStmt()
+		}
+
+	case 7:
+		p.EnterOuterAlt(localctx, 7)
+		{
+			p.SetState(56)
+			p.CreateUserStmt()
+		}
+
+	case 8:
+		p.EnterOuterAlt(localctx, 8)
+		{
+			p.SetState(57)
+			p.AlterUserStmt()
+		}
+
+	case 9:
+		p.EnterOuterAlt(localctx, 9)
+		{
+			p.SetState(58)
+			p.GrantStmt()
+		}
+
+	case 10:
+		p.EnterOuterAlt(localctx, 10)
+		{
+			p.SetState(59)
+			p.RevokeStmt()
 		}
 
 	case antlr.ATNInvalidAltNumber:
@@ -649,7 +792,7 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(44)
+		p.SetState(62)
 		p.Match(TideSQLParserINSERT)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -657,7 +800,7 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 		}
 	}
 	{
-		p.SetState(45)
+		p.SetState(63)
 		p.Match(TideSQLParserINTO)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -665,11 +808,11 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 		}
 	}
 	{
-		p.SetState(46)
+		p.SetState(64)
 		p.Path()
 	}
 	{
-		p.SetState(47)
+		p.SetState(65)
 		p.Match(TideSQLParserLPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -677,11 +820,11 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 		}
 	}
 	{
-		p.SetState(48)
+		p.SetState(66)
 		p.Measurement()
 	}
 	{
-		p.SetState(49)
+		p.SetState(67)
 		p.Match(TideSQLParserRPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -689,7 +832,7 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 		}
 	}
 	{
-		p.SetState(50)
+		p.SetState(68)
 		p.Match(TideSQLParserVALUES)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -697,10 +840,10 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 		}
 	}
 	{
-		p.SetState(51)
+		p.SetState(69)
 		p.ValueRow()
 	}
-	p.SetState(56)
+	p.SetState(74)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -709,7 +852,7 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 
 	for _la == TideSQLParserCOMMA {
 		{
-			p.SetState(52)
+			p.SetState(70)
 			p.Match(TideSQLParserCOMMA)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -717,11 +860,11 @@ func (p *TideSQLParser) InsertStmt() (localctx IInsertStmtContext) {
 			}
 		}
 		{
-			p.SetState(53)
+			p.SetState(71)
 			p.ValueRow()
 		}
 
-		p.SetState(58)
+		p.SetState(76)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -871,7 +1014,7 @@ func (p *TideSQLParser) ValueRow() (localctx IValueRowContext) {
 	p.EnterRule(localctx, 4, TideSQLParserRULE_valueRow)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(59)
+		p.SetState(77)
 		p.Match(TideSQLParserLPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -879,11 +1022,11 @@ func (p *TideSQLParser) ValueRow() (localctx IValueRowContext) {
 		}
 	}
 	{
-		p.SetState(60)
+		p.SetState(78)
 		p.Timestamp()
 	}
 	{
-		p.SetState(61)
+		p.SetState(79)
 		p.Match(TideSQLParserCOMMA)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -891,11 +1034,11 @@ func (p *TideSQLParser) ValueRow() (localctx IValueRowContext) {
 		}
 	}
 	{
-		p.SetState(62)
+		p.SetState(80)
 		p.Value()
 	}
 	{
-		p.SetState(63)
+		p.SetState(81)
 		p.Match(TideSQLParserRPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1089,7 +1232,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 	p.EnterRule(localctx, 6, TideSQLParserRULE_selectStmt)
 	var _la int
 
-	p.SetState(85)
+	p.SetState(103)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -1099,7 +1242,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(65)
+			p.SetState(83)
 			p.Match(TideSQLParserSELECT)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1107,11 +1250,11 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(66)
+			p.SetState(84)
 			p.Measurement()
 		}
 		{
-			p.SetState(67)
+			p.SetState(85)
 			p.Match(TideSQLParserFROM)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1119,10 +1262,10 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(68)
+			p.SetState(86)
 			p.Path()
 		}
-		p.SetState(70)
+		p.SetState(88)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -1131,12 +1274,12 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 
 		if _la == TideSQLParserWHERE {
 			{
-				p.SetState(69)
+				p.SetState(87)
 				p.WhereClause()
 			}
 
 		}
-		p.SetState(73)
+		p.SetState(91)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -1145,7 +1288,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 
 		if _la == TideSQLParserLIMIT {
 			{
-				p.SetState(72)
+				p.SetState(90)
 				p.LimitClause()
 			}
 
@@ -1154,7 +1297,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(75)
+			p.SetState(93)
 			p.Match(TideSQLParserSELECT)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1162,7 +1305,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(76)
+			p.SetState(94)
 			p.Match(TideSQLParserCOUNT)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1170,7 +1313,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(77)
+			p.SetState(95)
 			p.Match(TideSQLParserLPAREN)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1178,11 +1321,11 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(78)
+			p.SetState(96)
 			p.Measurement()
 		}
 		{
-			p.SetState(79)
+			p.SetState(97)
 			p.Match(TideSQLParserRPAREN)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1190,7 +1333,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(80)
+			p.SetState(98)
 			p.Match(TideSQLParserFROM)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -1198,10 +1341,10 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 			}
 		}
 		{
-			p.SetState(81)
+			p.SetState(99)
 			p.Path()
 		}
-		p.SetState(83)
+		p.SetState(101)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -1210,7 +1353,7 @@ func (p *TideSQLParser) SelectStmt() (localctx ISelectStmtContext) {
 
 		if _la == TideSQLParserWHERE {
 			{
-				p.SetState(82)
+				p.SetState(100)
 				p.WhereClause()
 			}
 
@@ -1384,7 +1527,7 @@ func (p *TideSQLParser) DeleteStmt() (localctx IDeleteStmtContext) {
 	p.EnterRule(localctx, 8, TideSQLParserRULE_deleteStmt)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(87)
+		p.SetState(105)
 		p.Match(TideSQLParserDELETE)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1392,7 +1535,7 @@ func (p *TideSQLParser) DeleteStmt() (localctx IDeleteStmtContext) {
 		}
 	}
 	{
-		p.SetState(88)
+		p.SetState(106)
 		p.Match(TideSQLParserFROM)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1400,11 +1543,11 @@ func (p *TideSQLParser) DeleteStmt() (localctx IDeleteStmtContext) {
 		}
 	}
 	{
-		p.SetState(89)
+		p.SetState(107)
 		p.Path()
 	}
 	{
-		p.SetState(90)
+		p.SetState(108)
 		p.Match(TideSQLParserLPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1412,11 +1555,11 @@ func (p *TideSQLParser) DeleteStmt() (localctx IDeleteStmtContext) {
 		}
 	}
 	{
-		p.SetState(91)
+		p.SetState(109)
 		p.Measurement()
 	}
 	{
-		p.SetState(92)
+		p.SetState(110)
 		p.Match(TideSQLParserRPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1424,7 +1567,7 @@ func (p *TideSQLParser) DeleteStmt() (localctx IDeleteStmtContext) {
 		}
 	}
 	{
-		p.SetState(93)
+		p.SetState(111)
 		p.WhereClause()
 	}
 
@@ -1607,7 +1750,7 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 	p.EnterRule(localctx, 10, TideSQLParserRULE_createTimeseriesStmt)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(95)
+		p.SetState(113)
 		p.Match(TideSQLParserCREATE)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1615,7 +1758,7 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(96)
+		p.SetState(114)
 		p.Match(TideSQLParserTIMESERIES)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1623,11 +1766,11 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(97)
+		p.SetState(115)
 		p.Path()
 	}
 	{
-		p.SetState(98)
+		p.SetState(116)
 		p.Match(TideSQLParserLPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1635,11 +1778,11 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(99)
+		p.SetState(117)
 		p.Measurement()
 	}
 	{
-		p.SetState(100)
+		p.SetState(118)
 		p.Match(TideSQLParserRPAREN)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1647,7 +1790,7 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(101)
+		p.SetState(119)
 		p.Match(TideSQLParserWITH)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1655,7 +1798,7 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(102)
+		p.SetState(120)
 		p.Match(TideSQLParserDATATYPE)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1663,7 +1806,7 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(103)
+		p.SetState(121)
 		p.Match(TideSQLParserEQ)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1671,7 +1814,7 @@ func (p *TideSQLParser) CreateTimeseriesStmt() (localctx ICreateTimeseriesStmtCo
 		}
 	}
 	{
-		p.SetState(104)
+		p.SetState(122)
 		p.DataTypeName()
 	}
 
@@ -1797,7 +1940,7 @@ func (p *TideSQLParser) ShowDevicesStmt() (localctx IShowDevicesStmtContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(106)
+		p.SetState(124)
 		p.Match(TideSQLParserSHOW)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1805,14 +1948,14 @@ func (p *TideSQLParser) ShowDevicesStmt() (localctx IShowDevicesStmtContext) {
 		}
 	}
 	{
-		p.SetState(107)
+		p.SetState(125)
 		p.Match(TideSQLParserDEVICES)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
-	p.SetState(109)
+	p.SetState(127)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -1821,7 +1964,7 @@ func (p *TideSQLParser) ShowDevicesStmt() (localctx IShowDevicesStmtContext) {
 
 	if _la == TideSQLParserIDENTIFIER {
 		{
-			p.SetState(108)
+			p.SetState(126)
 			p.ShowPattern()
 		}
 
@@ -1947,7 +2090,7 @@ func (p *TideSQLParser) ShowTimeseriesStmt() (localctx IShowTimeseriesStmtContex
 	p.EnterRule(localctx, 14, TideSQLParserRULE_showTimeseriesStmt)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(111)
+		p.SetState(129)
 		p.Match(TideSQLParserSHOW)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1955,7 +2098,7 @@ func (p *TideSQLParser) ShowTimeseriesStmt() (localctx IShowTimeseriesStmtContex
 		}
 	}
 	{
-		p.SetState(112)
+		p.SetState(130)
 		p.Match(TideSQLParserTIMESERIES)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -1963,8 +2106,1189 @@ func (p *TideSQLParser) ShowTimeseriesStmt() (localctx IShowTimeseriesStmtContex
 		}
 	}
 	{
-		p.SetState(113)
+		p.SetState(131)
 		p.Path()
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// ICreateUserStmtContext is an interface to support dynamic dispatch.
+type ICreateUserStmtContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	CREATE() antlr.TerminalNode
+	USER() antlr.TerminalNode
+	IDENTIFIER() antlr.TerminalNode
+	STRING() antlr.TerminalNode
+
+	// IsCreateUserStmtContext differentiates from other interfaces.
+	IsCreateUserStmtContext()
+}
+
+type CreateUserStmtContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyCreateUserStmtContext() *CreateUserStmtContext {
+	var p = new(CreateUserStmtContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_createUserStmt
+	return p
+}
+
+func InitEmptyCreateUserStmtContext(p *CreateUserStmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_createUserStmt
+}
+
+func (*CreateUserStmtContext) IsCreateUserStmtContext() {}
+
+func NewCreateUserStmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *CreateUserStmtContext {
+	var p = new(CreateUserStmtContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_createUserStmt
+
+	return p
+}
+
+func (s *CreateUserStmtContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *CreateUserStmtContext) CREATE() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserCREATE, 0)
+}
+
+func (s *CreateUserStmtContext) USER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserUSER, 0)
+}
+
+func (s *CreateUserStmtContext) IDENTIFIER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserIDENTIFIER, 0)
+}
+
+func (s *CreateUserStmtContext) STRING() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserSTRING, 0)
+}
+
+func (s *CreateUserStmtContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *CreateUserStmtContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *CreateUserStmtContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterCreateUserStmt(s)
+	}
+}
+
+func (s *CreateUserStmtContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitCreateUserStmt(s)
+	}
+}
+
+func (s *CreateUserStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitCreateUserStmt(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) CreateUserStmt() (localctx ICreateUserStmtContext) {
+	localctx = NewCreateUserStmtContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 16, TideSQLParserRULE_createUserStmt)
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(133)
+		p.Match(TideSQLParserCREATE)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(134)
+		p.Match(TideSQLParserUSER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(135)
+		p.Match(TideSQLParserIDENTIFIER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(136)
+		p.Match(TideSQLParserSTRING)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// IAlterUserStmtContext is an interface to support dynamic dispatch.
+type IAlterUserStmtContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	ALTER() antlr.TerminalNode
+	USER() antlr.TerminalNode
+	IDENTIFIER() antlr.TerminalNode
+	SET() antlr.TerminalNode
+	PASSWORD() antlr.TerminalNode
+	STRING() antlr.TerminalNode
+
+	// IsAlterUserStmtContext differentiates from other interfaces.
+	IsAlterUserStmtContext()
+}
+
+type AlterUserStmtContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyAlterUserStmtContext() *AlterUserStmtContext {
+	var p = new(AlterUserStmtContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_alterUserStmt
+	return p
+}
+
+func InitEmptyAlterUserStmtContext(p *AlterUserStmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_alterUserStmt
+}
+
+func (*AlterUserStmtContext) IsAlterUserStmtContext() {}
+
+func NewAlterUserStmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *AlterUserStmtContext {
+	var p = new(AlterUserStmtContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_alterUserStmt
+
+	return p
+}
+
+func (s *AlterUserStmtContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *AlterUserStmtContext) ALTER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserALTER, 0)
+}
+
+func (s *AlterUserStmtContext) USER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserUSER, 0)
+}
+
+func (s *AlterUserStmtContext) IDENTIFIER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserIDENTIFIER, 0)
+}
+
+func (s *AlterUserStmtContext) SET() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserSET, 0)
+}
+
+func (s *AlterUserStmtContext) PASSWORD() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserPASSWORD, 0)
+}
+
+func (s *AlterUserStmtContext) STRING() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserSTRING, 0)
+}
+
+func (s *AlterUserStmtContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *AlterUserStmtContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *AlterUserStmtContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterAlterUserStmt(s)
+	}
+}
+
+func (s *AlterUserStmtContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitAlterUserStmt(s)
+	}
+}
+
+func (s *AlterUserStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitAlterUserStmt(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) AlterUserStmt() (localctx IAlterUserStmtContext) {
+	localctx = NewAlterUserStmtContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 18, TideSQLParserRULE_alterUserStmt)
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(138)
+		p.Match(TideSQLParserALTER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(139)
+		p.Match(TideSQLParserUSER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(140)
+		p.Match(TideSQLParserIDENTIFIER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(141)
+		p.Match(TideSQLParserSET)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(142)
+		p.Match(TideSQLParserPASSWORD)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(143)
+		p.Match(TideSQLParserSTRING)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// IGrantStmtContext is an interface to support dynamic dispatch.
+type IGrantStmtContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	GRANT() antlr.TerminalNode
+	PrivList() IPrivListContext
+	ON() antlr.TerminalNode
+	GrantPath() IGrantPathContext
+	TO() antlr.TerminalNode
+	IDENTIFIER() antlr.TerminalNode
+
+	// IsGrantStmtContext differentiates from other interfaces.
+	IsGrantStmtContext()
+}
+
+type GrantStmtContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyGrantStmtContext() *GrantStmtContext {
+	var p = new(GrantStmtContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_grantStmt
+	return p
+}
+
+func InitEmptyGrantStmtContext(p *GrantStmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_grantStmt
+}
+
+func (*GrantStmtContext) IsGrantStmtContext() {}
+
+func NewGrantStmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *GrantStmtContext {
+	var p = new(GrantStmtContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_grantStmt
+
+	return p
+}
+
+func (s *GrantStmtContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *GrantStmtContext) GRANT() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserGRANT, 0)
+}
+
+func (s *GrantStmtContext) PrivList() IPrivListContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IPrivListContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IPrivListContext)
+}
+
+func (s *GrantStmtContext) ON() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserON, 0)
+}
+
+func (s *GrantStmtContext) GrantPath() IGrantPathContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IGrantPathContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IGrantPathContext)
+}
+
+func (s *GrantStmtContext) TO() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserTO, 0)
+}
+
+func (s *GrantStmtContext) IDENTIFIER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserIDENTIFIER, 0)
+}
+
+func (s *GrantStmtContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *GrantStmtContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *GrantStmtContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterGrantStmt(s)
+	}
+}
+
+func (s *GrantStmtContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitGrantStmt(s)
+	}
+}
+
+func (s *GrantStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitGrantStmt(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) GrantStmt() (localctx IGrantStmtContext) {
+	localctx = NewGrantStmtContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 20, TideSQLParserRULE_grantStmt)
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(145)
+		p.Match(TideSQLParserGRANT)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(146)
+		p.PrivList()
+	}
+	{
+		p.SetState(147)
+		p.Match(TideSQLParserON)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(148)
+		p.GrantPath()
+	}
+	{
+		p.SetState(149)
+		p.Match(TideSQLParserTO)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(150)
+		p.Match(TideSQLParserIDENTIFIER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// IRevokeStmtContext is an interface to support dynamic dispatch.
+type IRevokeStmtContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	REVOKE() antlr.TerminalNode
+	PrivList() IPrivListContext
+	ON() antlr.TerminalNode
+	GrantPath() IGrantPathContext
+	FROM() antlr.TerminalNode
+	IDENTIFIER() antlr.TerminalNode
+
+	// IsRevokeStmtContext differentiates from other interfaces.
+	IsRevokeStmtContext()
+}
+
+type RevokeStmtContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyRevokeStmtContext() *RevokeStmtContext {
+	var p = new(RevokeStmtContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_revokeStmt
+	return p
+}
+
+func InitEmptyRevokeStmtContext(p *RevokeStmtContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_revokeStmt
+}
+
+func (*RevokeStmtContext) IsRevokeStmtContext() {}
+
+func NewRevokeStmtContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *RevokeStmtContext {
+	var p = new(RevokeStmtContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_revokeStmt
+
+	return p
+}
+
+func (s *RevokeStmtContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *RevokeStmtContext) REVOKE() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserREVOKE, 0)
+}
+
+func (s *RevokeStmtContext) PrivList() IPrivListContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IPrivListContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IPrivListContext)
+}
+
+func (s *RevokeStmtContext) ON() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserON, 0)
+}
+
+func (s *RevokeStmtContext) GrantPath() IGrantPathContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IGrantPathContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IGrantPathContext)
+}
+
+func (s *RevokeStmtContext) FROM() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserFROM, 0)
+}
+
+func (s *RevokeStmtContext) IDENTIFIER() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserIDENTIFIER, 0)
+}
+
+func (s *RevokeStmtContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *RevokeStmtContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *RevokeStmtContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterRevokeStmt(s)
+	}
+}
+
+func (s *RevokeStmtContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitRevokeStmt(s)
+	}
+}
+
+func (s *RevokeStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitRevokeStmt(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) RevokeStmt() (localctx IRevokeStmtContext) {
+	localctx = NewRevokeStmtContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 22, TideSQLParserRULE_revokeStmt)
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(152)
+		p.Match(TideSQLParserREVOKE)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(153)
+		p.PrivList()
+	}
+	{
+		p.SetState(154)
+		p.Match(TideSQLParserON)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(155)
+		p.GrantPath()
+	}
+	{
+		p.SetState(156)
+		p.Match(TideSQLParserFROM)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+	{
+		p.SetState(157)
+		p.Match(TideSQLParserIDENTIFIER)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// IPrivListContext is an interface to support dynamic dispatch.
+type IPrivListContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	AllPriv() []IPrivContext
+	Priv(i int) IPrivContext
+	AllCOMMA() []antlr.TerminalNode
+	COMMA(i int) antlr.TerminalNode
+
+	// IsPrivListContext differentiates from other interfaces.
+	IsPrivListContext()
+}
+
+type PrivListContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyPrivListContext() *PrivListContext {
+	var p = new(PrivListContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_privList
+	return p
+}
+
+func InitEmptyPrivListContext(p *PrivListContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_privList
+}
+
+func (*PrivListContext) IsPrivListContext() {}
+
+func NewPrivListContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *PrivListContext {
+	var p = new(PrivListContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_privList
+
+	return p
+}
+
+func (s *PrivListContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *PrivListContext) AllPriv() []IPrivContext {
+	children := s.GetChildren()
+	len := 0
+	for _, ctx := range children {
+		if _, ok := ctx.(IPrivContext); ok {
+			len++
+		}
+	}
+
+	tst := make([]IPrivContext, len)
+	i := 0
+	for _, ctx := range children {
+		if t, ok := ctx.(IPrivContext); ok {
+			tst[i] = t.(IPrivContext)
+			i++
+		}
+	}
+
+	return tst
+}
+
+func (s *PrivListContext) Priv(i int) IPrivContext {
+	var t antlr.RuleContext
+	j := 0
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IPrivContext); ok {
+			if j == i {
+				t = ctx.(antlr.RuleContext)
+				break
+			}
+			j++
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IPrivContext)
+}
+
+func (s *PrivListContext) AllCOMMA() []antlr.TerminalNode {
+	return s.GetTokens(TideSQLParserCOMMA)
+}
+
+func (s *PrivListContext) COMMA(i int) antlr.TerminalNode {
+	return s.GetToken(TideSQLParserCOMMA, i)
+}
+
+func (s *PrivListContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *PrivListContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *PrivListContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterPrivList(s)
+	}
+}
+
+func (s *PrivListContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitPrivList(s)
+	}
+}
+
+func (s *PrivListContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitPrivList(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) PrivList() (localctx IPrivListContext) {
+	localctx = NewPrivListContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 24, TideSQLParserRULE_privList)
+	var _la int
+
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(159)
+		p.Priv()
+	}
+	p.SetState(164)
+	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
+	_la = p.GetTokenStream().LA(1)
+
+	for _la == TideSQLParserCOMMA {
+		{
+			p.SetState(160)
+			p.Match(TideSQLParserCOMMA)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+		{
+			p.SetState(161)
+			p.Priv()
+		}
+
+		p.SetState(166)
+		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
+		_la = p.GetTokenStream().LA(1)
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// IPrivContext is an interface to support dynamic dispatch.
+type IPrivContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	READ() antlr.TerminalNode
+	WRITE() antlr.TerminalNode
+
+	// IsPrivContext differentiates from other interfaces.
+	IsPrivContext()
+}
+
+type PrivContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyPrivContext() *PrivContext {
+	var p = new(PrivContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_priv
+	return p
+}
+
+func InitEmptyPrivContext(p *PrivContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_priv
+}
+
+func (*PrivContext) IsPrivContext() {}
+
+func NewPrivContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *PrivContext {
+	var p = new(PrivContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_priv
+
+	return p
+}
+
+func (s *PrivContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *PrivContext) READ() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserREAD, 0)
+}
+
+func (s *PrivContext) WRITE() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserWRITE, 0)
+}
+
+func (s *PrivContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *PrivContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *PrivContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterPriv(s)
+	}
+}
+
+func (s *PrivContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitPriv(s)
+	}
+}
+
+func (s *PrivContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitPriv(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) Priv() (localctx IPrivContext) {
+	localctx = NewPrivContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 26, TideSQLParserRULE_priv)
+	var _la int
+
+	p.EnterOuterAlt(localctx, 1)
+	{
+		p.SetState(167)
+		_la = p.GetTokenStream().LA(1)
+
+		if !(_la == TideSQLParserREAD || _la == TideSQLParserWRITE) {
+			p.GetErrorHandler().RecoverInline(p)
+		} else {
+			p.GetErrorHandler().ReportMatch(p)
+			p.Consume()
+		}
+	}
+
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
+	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
+}
+
+// IGrantPathContext is an interface to support dynamic dispatch.
+type IGrantPathContext interface {
+	antlr.ParserRuleContext
+
+	// GetParser returns the parser.
+	GetParser() antlr.Parser
+
+	// Getter signatures
+	Path() IPathContext
+	DOT() antlr.TerminalNode
+	AllSTAR() []antlr.TerminalNode
+	STAR(i int) antlr.TerminalNode
+
+	// IsGrantPathContext differentiates from other interfaces.
+	IsGrantPathContext()
+}
+
+type GrantPathContext struct {
+	antlr.BaseParserRuleContext
+	parser antlr.Parser
+}
+
+func NewEmptyGrantPathContext() *GrantPathContext {
+	var p = new(GrantPathContext)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_grantPath
+	return p
+}
+
+func InitEmptyGrantPathContext(p *GrantPathContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = TideSQLParserRULE_grantPath
+}
+
+func (*GrantPathContext) IsGrantPathContext() {}
+
+func NewGrantPathContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *GrantPathContext {
+	var p = new(GrantPathContext)
+
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
+
+	p.parser = parser
+	p.RuleIndex = TideSQLParserRULE_grantPath
+
+	return p
+}
+
+func (s *GrantPathContext) GetParser() antlr.Parser { return s.parser }
+
+func (s *GrantPathContext) Path() IPathContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IPathContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IPathContext)
+}
+
+func (s *GrantPathContext) DOT() antlr.TerminalNode {
+	return s.GetToken(TideSQLParserDOT, 0)
+}
+
+func (s *GrantPathContext) AllSTAR() []antlr.TerminalNode {
+	return s.GetTokens(TideSQLParserSTAR)
+}
+
+func (s *GrantPathContext) STAR(i int) antlr.TerminalNode {
+	return s.GetToken(TideSQLParserSTAR, i)
+}
+
+func (s *GrantPathContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *GrantPathContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *GrantPathContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.EnterGrantPath(s)
+	}
+}
+
+func (s *GrantPathContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(TideSQLListener); ok {
+		listenerT.ExitGrantPath(s)
+	}
+}
+
+func (s *GrantPathContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case TideSQLVisitor:
+		return t.VisitGrantPath(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+func (p *TideSQLParser) GrantPath() (localctx IGrantPathContext) {
+	localctx = NewGrantPathContext(p, p.GetParserRuleContext(), p.GetState())
+	p.EnterRule(localctx, 28, TideSQLParserRULE_grantPath)
+	p.SetState(179)
+	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 8, p.GetParserRuleContext()) {
+	case 1:
+		p.EnterOuterAlt(localctx, 1)
+		{
+			p.SetState(169)
+			p.Path()
+		}
+		{
+			p.SetState(170)
+			p.Match(TideSQLParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+		{
+			p.SetState(171)
+			p.Match(TideSQLParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+		{
+			p.SetState(172)
+			p.Match(TideSQLParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+
+	case 2:
+		p.EnterOuterAlt(localctx, 2)
+		{
+			p.SetState(174)
+			p.Path()
+		}
+		{
+			p.SetState(175)
+			p.Match(TideSQLParserDOT)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+		{
+			p.SetState(176)
+			p.Match(TideSQLParserSTAR)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
+		}
+
+	case 3:
+		p.EnterOuterAlt(localctx, 3)
+		{
+			p.SetState(178)
+			p.Path()
+		}
+
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
 errorExit:
@@ -2089,15 +3413,15 @@ func (s *ShowPatternContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 
 func (p *TideSQLParser) ShowPattern() (localctx IShowPatternContext) {
 	localctx = NewShowPatternContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 16, TideSQLParserRULE_showPattern)
+	p.EnterRule(localctx, 30, TideSQLParserRULE_showPattern)
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(115)
+		p.SetState(181)
 		p.Path()
 	}
-	p.SetState(119)
+	p.SetState(185)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -2106,7 +3430,7 @@ func (p *TideSQLParser) ShowPattern() (localctx IShowPatternContext) {
 
 	if _la == TideSQLParserDOT {
 		{
-			p.SetState(116)
+			p.SetState(182)
 			p.Match(TideSQLParserDOT)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -2114,7 +3438,7 @@ func (p *TideSQLParser) ShowPattern() (localctx IShowPatternContext) {
 			}
 		}
 		{
-			p.SetState(117)
+			p.SetState(183)
 			p.Match(TideSQLParserSTAR)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -2122,7 +3446,7 @@ func (p *TideSQLParser) ShowPattern() (localctx IShowPatternContext) {
 			}
 		}
 		{
-			p.SetState(118)
+			p.SetState(184)
 			p.Match(TideSQLParserSTAR)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -2280,12 +3604,12 @@ func (s *WhereClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 
 func (p *TideSQLParser) WhereClause() (localctx IWhereClauseContext) {
 	localctx = NewWhereClauseContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 18, TideSQLParserRULE_whereClause)
+	p.EnterRule(localctx, 32, TideSQLParserRULE_whereClause)
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(121)
+		p.SetState(187)
 		p.Match(TideSQLParserWHERE)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -2293,10 +3617,10 @@ func (p *TideSQLParser) WhereClause() (localctx IWhereClauseContext) {
 		}
 	}
 	{
-		p.SetState(122)
+		p.SetState(188)
 		p.TimePredicate()
 	}
-	p.SetState(127)
+	p.SetState(193)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
@@ -2305,7 +3629,7 @@ func (p *TideSQLParser) WhereClause() (localctx IWhereClauseContext) {
 
 	for _la == TideSQLParserAND {
 		{
-			p.SetState(123)
+			p.SetState(189)
 			p.Match(TideSQLParserAND)
 			if p.HasError() {
 				// Recognition error - abort rule
@@ -2313,11 +3637,11 @@ func (p *TideSQLParser) WhereClause() (localctx IWhereClauseContext) {
 			}
 		}
 		{
-			p.SetState(124)
+			p.SetState(190)
 			p.TimePredicate()
 		}
 
-		p.SetState(129)
+		p.SetState(195)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
@@ -2442,10 +3766,10 @@ func (s *TimePredicateContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 
 func (p *TideSQLParser) TimePredicate() (localctx ITimePredicateContext) {
 	localctx = NewTimePredicateContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 20, TideSQLParserRULE_timePredicate)
+	p.EnterRule(localctx, 34, TideSQLParserRULE_timePredicate)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(130)
+		p.SetState(196)
 		p.Match(TideSQLParserTIME)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -2453,11 +3777,11 @@ func (p *TideSQLParser) TimePredicate() (localctx ITimePredicateContext) {
 		}
 	}
 	{
-		p.SetState(131)
+		p.SetState(197)
 		p.CmpOp()
 	}
 	{
-		p.SetState(132)
+		p.SetState(198)
 		p.Match(TideSQLParserINTEGER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -2580,15 +3904,15 @@ func (s *CmpOpContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 
 func (p *TideSQLParser) CmpOp() (localctx ICmpOpContext) {
 	localctx = NewCmpOpContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 22, TideSQLParserRULE_cmpOp)
+	p.EnterRule(localctx, 36, TideSQLParserRULE_cmpOp)
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(134)
+		p.SetState(200)
 		_la = p.GetTokenStream().LA(1)
 
-		if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8126464) != 0) {
+		if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8321499136) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -2696,10 +4020,10 @@ func (s *LimitClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 
 func (p *TideSQLParser) LimitClause() (localctx ILimitClauseContext) {
 	localctx = NewLimitClauseContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 24, TideSQLParserRULE_limitClause)
+	p.EnterRule(localctx, 38, TideSQLParserRULE_limitClause)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(136)
+		p.SetState(202)
 		p.Match(TideSQLParserLIMIT)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -2707,7 +4031,7 @@ func (p *TideSQLParser) LimitClause() (localctx ILimitClauseContext) {
 		}
 	}
 	{
-		p.SetState(137)
+		p.SetState(203)
 		p.Match(TideSQLParserINTEGER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -2825,31 +4149,31 @@ func (s *PathContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 
 func (p *TideSQLParser) Path() (localctx IPathContext) {
 	localctx = NewPathContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 26, TideSQLParserRULE_path)
+	p.EnterRule(localctx, 40, TideSQLParserRULE_path)
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(139)
+		p.SetState(205)
 		p.Match(TideSQLParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
 			goto errorExit
 		}
 	}
-	p.SetState(144)
+	p.SetState(210)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
 		goto errorExit
 	}
-	_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 9, p.GetParserRuleContext())
+	_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 11, p.GetParserRuleContext())
 	if p.HasError() {
 		goto errorExit
 	}
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			{
-				p.SetState(140)
+				p.SetState(206)
 				p.Match(TideSQLParserDOT)
 				if p.HasError() {
 					// Recognition error - abort rule
@@ -2857,7 +4181,7 @@ func (p *TideSQLParser) Path() (localctx IPathContext) {
 				}
 			}
 			{
-				p.SetState(141)
+				p.SetState(207)
 				p.Match(TideSQLParserIDENTIFIER)
 				if p.HasError() {
 					// Recognition error - abort rule
@@ -2866,12 +4190,12 @@ func (p *TideSQLParser) Path() (localctx IPathContext) {
 			}
 
 		}
-		p.SetState(146)
+		p.SetState(212)
 		p.GetErrorHandler().Sync(p)
 		if p.HasError() {
 			goto errorExit
 		}
-		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 9, p.GetParserRuleContext())
+		_alt = p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 11, p.GetParserRuleContext())
 		if p.HasError() {
 			goto errorExit
 		}
@@ -2972,10 +4296,10 @@ func (s *MeasurementContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 
 func (p *TideSQLParser) Measurement() (localctx IMeasurementContext) {
 	localctx = NewMeasurementContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 28, TideSQLParserRULE_measurement)
+	p.EnterRule(localctx, 42, TideSQLParserRULE_measurement)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(147)
+		p.SetState(213)
 		p.Match(TideSQLParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -3078,10 +4402,10 @@ func (s *DataTypeNameContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 
 func (p *TideSQLParser) DataTypeName() (localctx IDataTypeNameContext) {
 	localctx = NewDataTypeNameContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 30, TideSQLParserRULE_dataTypeName)
+	p.EnterRule(localctx, 44, TideSQLParserRULE_dataTypeName)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(149)
+		p.SetState(215)
 		p.Match(TideSQLParserIDENTIFIER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -3184,10 +4508,10 @@ func (s *TimestampContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 
 func (p *TideSQLParser) Timestamp() (localctx ITimestampContext) {
 	localctx = NewTimestampContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 32, TideSQLParserRULE_timestamp)
+	p.EnterRule(localctx, 46, TideSQLParserRULE_timestamp)
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(151)
+		p.SetState(217)
 		p.Match(TideSQLParserINTEGER)
 		if p.HasError() {
 			// Recognition error - abort rule
@@ -3305,15 +4629,15 @@ func (s *ValueContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 
 func (p *TideSQLParser) Value() (localctx IValueContext) {
 	localctx = NewValueContext(p, p.GetParserRuleContext(), p.GetState())
-	p.EnterRule(localctx, 34, TideSQLParserRULE_value)
+	p.EnterRule(localctx, 48, TideSQLParserRULE_value)
 	var _la int
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(153)
+		p.SetState(219)
 		_la = p.GetTokenStream().LA(1)
 
-		if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8053063680) != 0) {
+		if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8246337208320) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
